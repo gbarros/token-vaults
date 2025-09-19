@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import toast from 'react-hot-toast';
@@ -88,20 +88,46 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
   });
 
   // Write contract for setting price
-  const { writeContract, data: setPriceTxHash, isPending } = useWriteContract();
+  const { writeContract, data: setPriceTxHash, isPending, error: writeError } = useWriteContract();
 
-  const { isLoading: isSetPriceConfirming } = useWaitForTransactionReceipt({
+  const { isLoading: isSetPriceConfirming, error: setPriceError } = useWaitForTransactionReceipt({
     hash: setPriceTxHash,
   });
 
-  // Handle transaction success/error separately
+  // Track if we've already handled this transaction
+  const handledTxRef = useRef<string | null>(null);
+
+  // Handle write contract errors
   React.useEffect(() => {
-    if (setPriceTxHash && !isSetPriceConfirming) {
-      toast.success(`Price updated to ${customPrice}!`);
-      refetchPrice();
-      onRefresh();
+    if (writeError) {
+      toast.dismiss('set-price-tx');
+      toast.error('Failed to initiate price update transaction');
     }
-  }, [setPriceTxHash, isSetPriceConfirming, customPrice, refetchPrice, onRefresh]);
+  }, [writeError]);
+
+  // Handle transaction success/error separately - only depend on core transaction state
+  React.useEffect(() => {
+    if (setPriceTxHash && setPriceTxHash !== handledTxRef.current) {
+      if (setPriceError) {
+        // Handle transaction error
+        handledTxRef.current = setPriceTxHash;
+        toast.dismiss('set-price-tx');
+        toast.error('Transaction failed. Please try again.');
+      } else if (!isSetPriceConfirming) {
+        // Handle transaction success
+        handledTxRef.current = setPriceTxHash;
+        
+        // Dismiss the loading toast and show success
+        toast.dismiss('set-price-tx');
+        toast.success(`Price updated to ${customPrice}!`);
+        
+        // Call functions without including them in dependencies to prevent infinite loops
+        refetchPrice();
+        onRefresh();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setPriceTxHash, isSetPriceConfirming, setPriceError, customPrice]); // Intentionally excluding refetchPrice and onRefresh
 
   const handleSetPrice = async (priceValue: string) => {
     if (!userAddress || !aggregatorAddress) {
@@ -113,16 +139,18 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
       const priceDecimals = decimals || 8;
       const price = parseUnits(priceValue, priceDecimals);
       
+      // Show loading toast immediately
+      toast.loading(`Setting price to ${priceValue}...`, { id: 'set-price-tx' });
+      
       writeContract({
         address: aggregatorAddress as `0x${string}`,
         abi: aggregatorAbi,
         functionName: 'setAnswer',
         args: [price, BigInt(0), BigInt(0)], // auto-increment roundId, use current timestamp
       });
-
-      toast.loading(`Setting price to ${priceValue}...`, { id: 'set-price-tx' });
     } catch (error) {
       console.error('Set price error:', error);
+      toast.dismiss('set-price-tx');
       toast.error('Failed to set price');
     }
   };
@@ -348,29 +376,37 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
                     </div>
                     <div className="bg-gray-50 rounded-md p-2">
                       <span className="text-gray-600">Liquidation Price:</span>
-                      <div className="font-medium">{parseFloat(currentHealth.liquidationPrice).toFixed(8)}</div>
+                      <div className="font-medium">
+                        {currentHealth.liquidationPrice === '0.00' 
+                          ? 'N/A' 
+                          : `${parseFloat(currentHealth.liquidationPrice).toFixed(4)} ${contracts.oracles.aggregator.pair.split('/')[1]}`
+                        }
+                      </div>
                     </div>
                   </div>
 
-                  {/* Price Impact Simulation */}
-                  {customPrice && customPrice !== currentPrice && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                      <p className="text-sm font-medium text-blue-800 mb-2">
-                        💡 Price Impact Simulation
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-blue-700">
-                            Health Factor at {customPrice}: {simulatedHealth.healthFactor}
-                          </p>
-                          <p className={`text-xs ${simulatedHealth.isHealthy ? 'text-green-600' : 'text-red-600'}`}>
-                            {simulatedHealth.isHealthy ? '✅ Would remain healthy' : '⚠️ Would be at risk'}
-                          </p>
-                        </div>
-                        <div className={`w-3 h-3 rounded-full ${simulatedHealth.isHealthy ? 'bg-green-500' : 'bg-red-500'}`} />
+                {/* Price Impact Simulation */}
+                {customPrice && customPrice !== currentPrice && !isNaN(parseFloat(customPrice)) && parseFloat(customPrice) > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <p className="text-sm font-medium text-blue-800 mb-2">
+                      💡 Price Impact Simulation (SDK-Powered)
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-blue-700">
+                          Health Factor at {parseFloat(customPrice).toFixed(2)}: {simulatedHealth.healthFactor}
+                        </p>
+                        <p className={`text-xs ${simulatedHealth.isHealthy ? 'text-green-600' : 'text-red-600'}`}>
+                          {simulatedHealth.isHealthy ? '✅ Would remain healthy' : '⚠️ Would be at risk'}
+                        </p>
+                        <p className="text-xs text-blue-500 mt-1">
+                          ✨ Powered by Morpho Blue SDK
+                        </p>
                       </div>
+                      <div className={`w-3 h-3 rounded-full ${simulatedHealth.isHealthy ? 'bg-green-500' : 'bg-red-500'}`} />
                     </div>
-                  )}
+                  </div>
+                )}
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Toaster } from 'react-hot-toast';
 import WalletCard from '@/components/setup/WalletCard';
 import TokenFaucetCard from '@/components/setup/TokenFaucetCard';
@@ -10,9 +10,9 @@ import SandboxMarketCard from '@/components/setup/SandboxMarketCard';
 export default function SetupPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

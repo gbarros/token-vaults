@@ -1,0 +1,6 @@
+---
+description: temp files and scripts
+globs:
+alwaysApply: true
+---
+- If you are attempting to test a solution or debug a situation by creating new temporary scripts, append "temp" to their names or place them inside a "temp" folder.

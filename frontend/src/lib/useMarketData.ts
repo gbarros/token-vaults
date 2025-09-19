@@ -1,68 +1,9 @@
 import { useReadContract } from 'wagmi';
-import { formatEther, formatUnits } from 'viem';
-import { contracts } from './contracts';
-
-// Morpho Blue ABI for market reading
-const morphoBlueAbi = [
-  {
-    type: 'function',
-    name: 'market',
-    inputs: [{ name: 'id', type: 'bytes32', internalType: 'Id' }],
-    outputs: [
-      {
-        name: 'm',
-        type: 'tuple',
-        components: [
-          { name: 'totalSupplyAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalSupplyShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'lastUpdate', type: 'uint128', internalType: 'uint128' },
-          { name: 'fee', type: 'uint128', internalType: 'uint128' },
-        ],
-        internalType: 'struct Market',
-      },
-    ],
-    stateMutability: 'view',
-  },
-] as const;
-
-// IRM ABI for getting borrow rate
-const irmAbi = [
-  {
-    type: 'function',
-    name: 'borrowRateView',
-    inputs: [
-      {
-        name: 'marketParams',
-        type: 'tuple',
-        components: [
-          { name: 'loanToken', type: 'address', internalType: 'address' },
-          { name: 'collateralToken', type: 'address', internalType: 'address' },
-          { name: 'oracle', type: 'address', internalType: 'address' },
-          { name: 'irm', type: 'address', internalType: 'address' },
-          { name: 'lltv', type: 'uint256', internalType: 'uint256' },
-        ],
-        internalType: 'struct MarketParams',
-      },
-      {
-        name: 'market',
-        type: 'tuple',
-        components: [
-          { name: 'totalSupplyAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalSupplyShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'lastUpdate', type: 'uint128', internalType: 'uint128' },
-          { name: 'fee', type: 'uint128', internalType: 'uint128' },
-        ],
-        internalType: 'struct Market',
-      },
-    ],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
-] as const;
+import { formatEther } from 'viem';
+import { Market } from '@morpho-org/blue-sdk';
+import { contracts, getMarketParams } from './contracts';
+import { morphoBlueAbi, oracleAbi } from './abis';
+import { parseMarketData, formatApy } from './sdkUtils';
 
 export interface MarketMetrics {
   totalSupply: string;
@@ -75,12 +16,15 @@ export interface MarketMetrics {
 }
 
 export function useMarketData(): MarketMetrics {
-  // Read market data from Morpho Blue
+  // Use centralized market parameters from singleton
+  const marketParams = getMarketParams();
+
+  // Read raw market data from Morpho Blue using SDK-generated market ID
   const { data: marketData, isLoading: marketLoading, error: marketError } = useReadContract({
     address: contracts.morpho.morphoBlueCore,
     abi: morphoBlueAbi,
     functionName: 'market',
-    args: [contracts.markets.sandbox.id as `0x${string}`],
+    args: marketParams ? [marketParams.id as `0x${string}`] : undefined, // SDK-generated ID
     query: {
       // Refresh every 30 seconds to minimize RPC calls
       refetchInterval: 30000,
@@ -89,63 +33,91 @@ export function useMarketData(): MarketMetrics {
     },
   });
 
-  // Market parameters for IRM call
-  const marketParams = {
-    loanToken: contracts.markets.sandbox.loanToken,
-    collateralToken: contracts.markets.sandbox.collateralToken,
-    oracle: contracts.markets.sandbox.oracle,
-    irm: contracts.markets.sandbox.irm,
-    lltv: BigInt(contracts.markets.sandbox.lltv),
-  };
-
-  // Read borrow rate from IRM (only if we have market data)
-  const { data: borrowRateData, isLoading: rateLoading, error: rateError } = useReadContract({
-    address: contracts.morpho.adaptiveCurveIRM,
-    abi: irmAbi,
-    functionName: 'borrowRateView',
-    args: marketData ? [marketParams, marketData] : undefined,
+  // Read oracle price for SDK calculations (may fail if stale)
+  const { data: oraclePrice, isLoading: priceLoading, error: priceError } = useReadContract({
+    address: contracts.markets.sandbox.oracle as `0x${string}`,
+    abi: oracleAbi,
+    functionName: 'price',
     query: {
-      enabled: !!marketData,
       refetchInterval: 30000,
       staleTime: 15000,
     },
   });
 
-  // Calculate metrics
-  const totalSupplyAssets = marketData?.totalSupplyAssets || BigInt(0);
-  const totalBorrowAssets = marketData?.totalBorrowAssets || BigInt(0);
+  // If no market data or params, return loading/error state
+  if (!marketData || !marketParams) {
+    return {
+      totalSupply: '0.00',
+      totalBorrow: '0.00',
+      utilization: '0.00',
+      supplyAPR: marketParams ? '0.00' : 'No Market',
+      borrowAPR: marketParams ? '0.00' : 'No Market',
+      isLoading: marketLoading,
+      error: !!marketError || !marketParams,
+    };
+  }
+
+  // Parse SDK ABI tuple to structured object
+  const marketDataStruct = parseMarketData(marketData);
+
+  // Try SDK calculations if oracle price is available
+  if (oraclePrice && !priceError) {
+    try {
+      // Create SDK Market instance with real data including oracle price
+      const market = new Market({
+        params: marketParams,
+        totalSupplyAssets: marketDataStruct.totalSupplyAssets,
+        totalSupplyShares: marketDataStruct.totalSupplyShares,
+        totalBorrowAssets: marketDataStruct.totalBorrowAssets,
+        totalBorrowShares: marketDataStruct.totalBorrowShares,
+        lastUpdate: marketDataStruct.lastUpdate,
+        fee: marketDataStruct.fee,
+        price: oraclePrice, // Include oracle price for APY calculations
+      });
+
+      // Use SDK properties for accurate calculations (they are properties, not methods!)
+      const utilization = market.utilization; // BigInt in wei (18 decimals)
+      const supplyApy = market.supplyApy; // BigInt or Number (SDK returns BigInt for very small values)
+      const borrowApy = market.borrowApy; // BigInt or Number (SDK returns BigInt for very small values)
+
+      // Use centralized APY formatting
+
+        return {
+          totalSupply: formatEther(marketDataStruct.totalSupplyAssets),
+          totalBorrow: formatEther(marketDataStruct.totalBorrowAssets),
+          utilization: (Number(formatEther(utilization)) * 100).toFixed(2), // Convert from wei to percentage
+          supplyAPR: formatApy(supplyApy),
+          borrowAPR: formatApy(borrowApy),
+          isLoading: false,
+          error: false,
+        };
+    } catch (error) {
+      console.error('SDK calculation error:', error);
+      // Fall through to manual calculations
+    }
+  }
+
+  // Fallback to manual calculations when SDK fails or oracle is stale
+  console.warn('Using manual calculations - SDK failed or oracle price is stale');
   
-  // Format values
-  const totalSupply = formatEther(totalSupplyAssets);
-  const totalBorrow = formatEther(totalBorrowAssets);
+  const totalSupplyAssets = marketDataStruct.totalSupplyAssets;
+  const totalBorrowAssets = marketDataStruct.totalBorrowAssets;
   
-  // Calculate utilization rate
   const utilization = totalSupplyAssets > BigInt(0) 
     ? ((Number(totalBorrowAssets) / Number(totalSupplyAssets)) * 100).toFixed(2)
     : '0.00';
 
-  // Calculate real APR from IRM data
-  const borrowRatePerSecond = borrowRateData || BigInt(0);
-  
-  // Convert from per-second rate to APR (assuming 18 decimal places)
-  // Formula: APR = (rate_per_second * seconds_per_year) / 1e18 * 100
-  const secondsPerYear = 365.25 * 24 * 60 * 60; // ~31,557,600
-  const borrowAPR = borrowRatePerSecond > BigInt(0)
-    ? ((Number(formatUnits(borrowRatePerSecond, 18)) * secondsPerYear) * 100).toFixed(2)
-    : '0.00';
-
-  // Supply APR = Borrow APR * Utilization Rate (simplified, ignoring fees)
-  const supplyAPR = totalSupplyAssets > BigInt(0) && borrowRatePerSecond > BigInt(0)
-    ? ((parseFloat(borrowAPR) * parseFloat(utilization)) / 100).toFixed(2)
-    : '0.00';
+  // Show appropriate status based on the error type
+  const borrowAPR = priceError ? 'Oracle Stale' : 'SDK Error';
+  const supplyAPR = priceError ? 'Oracle Stale' : 'SDK Error';
 
   return {
-    totalSupply,
-    totalBorrow,
+    totalSupply: formatEther(totalSupplyAssets),
+    totalBorrow: formatEther(totalBorrowAssets),
     utilization,
     supplyAPR,
     borrowAPR,
-    isLoading: marketLoading || rateLoading || false,
-    error: !!(marketError || rateError),
+    isLoading: priceLoading,
+    error: false, // Don't show error - we have basic data
   };
 }

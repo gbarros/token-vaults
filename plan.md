@@ -16,7 +16,7 @@ This document is a working plan for building a public demo of a Vault product us
 * **Non‑Goals (for now):** Vault V2/adapters/VICs, mainnet deployments, real rewards programs, cross‑chain flows, production timelocks/hardening.
 * **Upgrade path:** Add an appendix later with a migration checklist to V2 if useful.
 
-### Implementation Stack (tentative)
+### Implementation Stack
 
 * **Node & package manager:** Node 20.x (add `.nvmrc`), npm (use `npm` scripts).
 * **Contracts:** Foundry (Solidity, OZ), scripts via `forge script`.
@@ -101,43 +101,77 @@ This document is a working plan for building a public demo of a Vault product us
 
 ---
 
+## 3.1. Multi-Market Strategy Benefits
+
+**Why Multiple Markets Matter for Vault Demos:**
+
+Based on the Morpho documentation, vaults demonstrate their core value proposition through:
+
+1. **Risk Diversification**: Spreading deposits across markets with different LLTV ratios (77%, 86%, 94.5%) to balance risk vs yield
+2. **Yield Optimization**: Allocator can rebalance between markets based on utilization rates and APY differences
+3. **Market Selection**: Curator demonstrates risk management by enabling/disabling markets and setting supply caps
+4. **Real Strategy Showcase**: Multiple markets allow demonstrating actual vault strategies rather than simple pass-through
+
+**Planned Market Risk Profiles:**
+- **Conservative**: `fakeETH/fakeUSD` (94.5% LLTV) - Lower risk, stable yield
+- **Balanced**: `fakeBTC/fakeUSD` (86% LLTV) - Medium risk/reward  
+- **Aggressive**: `fakeTIA/fakeETH` (77% LLTV) - Higher risk, potentially higher yield
+- **Cross-Asset**: `fakeTIA/fakeETH` - Demonstrates non-USD denominated lending
+
+This enables showcasing:
+- **Curator Actions**: Setting different caps per market based on risk assessment
+- **Allocator Actions**: Rebalancing based on yield opportunities and utilization
+- **User Benefits**: Diversified exposure without managing individual positions
+
+---
+
 ## 4. Demo Architecture
 
-1. **Create a Morpho Market (optional)**
+1. **Create Multiple Morpho Markets**
 
-   * Loan asset: mock ERC20 (USDC on Sepolia).
-   * Collateral: mock WETH.
-   * Oracle: Chainlink price feed from factory.
-   * Configure LLTV, IRM.
+   * Deploy 4 test tokens: `fakeUSD`, `fakeTIA`, `fakeETH`, `fakeBTC`
+   * Create 4 markets with different risk profiles:
+     - `fakeTIA/fakeUSD` (86% LLTV) - Original market
+     - `fakeETH/fakeUSD` (94.5% LLTV) - Conservative
+     - `fakeBTC/fakeUSD` (86% LLTV) - Balanced  
+     - `fakeTIA/fakeETH` (77% LLTV) - Aggressive
+   * Deploy separate oracles for each pair with controllable prices
+   * All use AdaptiveCurveIRM with same parameters
 
 2. **Deploy a MetaMorpho v1.1 Vault**
 
    * Use the Factory.
    * Set `timelock = 0` for hackathon speed.
    * Give it a name & symbol (mutable in v1.1).
+   * Configure as multi-market strategy vault
 
 3. **Assign Roles**
 
    * **Owner:** multisig or EOA.
-   * **Curator:** configures markets, caps, queues.
-   * **Allocator:** executes `reallocate`.
+   * **Curator:** configures markets, caps, queues across all markets.
+   * **Allocator:** executes `reallocate` across multiple markets.
    * **Guardian:** can pause in emergencies.
 
-4. **Enable Market & Set Caps**
+4. **Enable Markets & Set Differentiated Caps**
 
-   * Curator enables your market.
-   * Configure `supplyCap` and `withdrawQueue`.
-   * Publish these params for participants.
+   * Curator enables all 4 markets with different supply caps:
+     - Conservative market: Higher cap (e.g., 1000 fakeUSD)
+     - Balanced markets: Medium caps (e.g., 500 fakeUSD each)
+     - Aggressive market: Lower cap (e.g., 200 fakeUSD)
+   * Configure `supplyQueue` and `withdrawQueue` with risk-based ordering.
 
-5. **Allocate Liquidity**
+5. **Demonstrate Multi-Market Allocation**
 
-   * Allocator uses `reallocate()` to push funds to markets.
-   * Can run a simple bot to rebalance daily.
+   * Allocator uses `reallocate()` to distribute funds across markets
+   * Show rebalancing based on utilization rates and yield opportunities
+   * Run allocation bot that responds to market conditions
 
-6. **Frontend UX (ERC-4626)**
+6. **Enhanced Frontend UX (ERC-4626)**
 
-   * Deposit, withdraw, and show APY.
-   * Use Morpho SDK or viem scripts.
+   * Deposit, withdraw, and show blended APY from all markets
+   * Display allocation breakdown across markets
+   * Show individual market metrics and vault's exposure to each
+   * Use Morpho SDK or viem scripts for multi-market data
 
    **APY display (minimal approach):**
 
@@ -152,7 +186,7 @@ This document is a working plan for building a public demo of a Vault product us
 
 ---
 
-## 4.5 Demo Tracks (Multi‑Page)
+## 4.1 Demo Tracks (Multi‑Page)
 
 **Page 1 — “Pure Morpho” (no custom Solidity):**
 
@@ -187,45 +221,7 @@ For this demo, we will implement **Option B (Direct to Morpho Blue)** first.
 
 ---
 
-## 5. Code Snippets (Minimal)
-
-### User Deposit/Withdraw (TS + viem)
-
-```ts
-import { createWalletClient, http, parseUnits } from "viem";
-import { sepolia } from "viem/chains";
-
-const wallet = createWalletClient({ account, chain: sepolia, transport: http(RPC) });
-
-await wallet.writeContract({
-  address: TOKEN,
-  abi: erc20,
-  functionName: "approve",
-  args: [VAULT, parseUnits("100", 18)]
-});
-
-await wallet.writeContract({
-  address: VAULT,
-  abi: erc4626,
-  functionName: "deposit",
-  args: [parseUnits("100", 18), account.address]
-});
-```
-
-### Allocator Reallocate (TS + viem)
-
-```ts
-await allocator.writeContract({
-  address: VAULT,
-  abi: vaultAbi,
-  functionName: "reallocate",
-  args: [[{ market: MARKET, assets: parseUnits("50", 18) }]]
-});
-```
-
----
-
-## 6. Safety & Hackathon Notes
+## 5. Safety & Hackathon Notes
 
 * **Small caps** to avoid draining testnet liquidity.
 * **Timelock=0** only for hackathon; highlight production best practices.
@@ -240,7 +236,7 @@ await allocator.writeContract({
 
 ---
 
-## 7. Optional Enhancements
+## 6. Optional Enhancements
 
 * **Use OnchainKit Earn Component** (Base Sepolia)
 
@@ -252,22 +248,40 @@ await allocator.writeContract({
 
 ---
 
-## 8. Milestones & Next Steps
+## 7. Milestones & Next Steps
 
 **Milestones (acceptance criteria)**
 
-* **M0:** Setting the Stage (Setup & Mocks Page)
+* **M0:** Setting the Stage (Setup & Mocks Page) ✅ **COMPLETE**
   * Faucet tokens live; balances + totalSupply visible; mint via UI works.
   * Chainlink‑compatible aggregator deployed; self‑deployed oracle contract wired to it (no factory on Sepolia); price controllable in UI with presets.
   * Sandbox market ready: either deployed via UI (or script) using our tokens + oracle + IRM, and seeded to target utilization via an "Initialize utilization" action.
-  * Address book (`config/addresses.ts`) populated; `.env.example` ready; all sources linked.
-* **M1:** Page 1 live on Sepolia (deposit/withdraw + APY view working against a MetaMorpho v1.1 vault or our sandbox vault).
-* **M2:** Ops scripts runnable on Sepolia (roles assigned, caps set, `reallocate` succeeds with visible effect).
+
+* **M1:** Page 1 live on Sepolia (deposit/withdraw + APY view working against a MetaMorpho v1.1 vault).
+* **M2:** Ops scripts runnable on Sepolia (roles assigned, caps set, `reallocate` succeeds with visible effect across multiple markets).
 * **M3:** Page 2 prototype implementing **Option B (Custom vault → Morpho Blue)** with minimal but working flow.
 
-* [ ] Collect Sepolia addresses from Morpho docs.
-* [ ] Deploy a toy market (or use an existing test market).
-* [ ] Prefer: deploy a sandbox market (own tokens, oracle, IRM) from UI or script.
+* **M3.5:** Multi-Market Infrastructure (Enable Vault Strategies)
+  * **Rationale:** Vaults demonstrate their value through diversified yield strategies across multiple markets. Currently we only have one fakeTIA/fakeUSD market, which limits the vault's ability to showcase real allocation strategies, risk management, and yield optimization.
+  * **Deliverables:**
+    * Deploy additional test tokens: `fakeETH`, `fakeBTC` (ERC20 faucet tokens)
+    * Create 2-3 additional markets with different risk profiles:
+      * `fakeETH/fakeUSD` market (higher LLTV ~94.5% - safer)
+      * `fakeBTC/fakeUSD` market (medium LLTV ~86% - current)  
+      * `fakeTIA/fakeETH` market (lower LLTV ~77% - riskier)
+    * Deploy separate price aggregators for each pair with controllable prices
+    * Extend Setup & Mocks page to show all markets with individual utilization/APY
+    * Create "Market Comparison" component showing risk/yield profiles
+    * Add scripts to initialize utilization across all markets
+    * **Success Criteria:** 
+      * Vault can allocate across 3+ markets with different yield/risk characteristics
+      * Setup page displays multi-market overview with individual controls
+      * Curator can set different supply caps per market
+      * Allocator can demonstrate rebalancing between markets based on yield/utilization
+
+* [x] Collect Sepolia addresses from Morpho docs.
+* [x] Deploy a toy market (or use an existing test market).
+* [x] Prefer: deploy a sandbox market (own tokens, oracle, IRM) from UI or script.
 * [ ] Deploy MetaMorpho vault via factory.
 * [ ] Script role assignment, cap setup, reallocation.
 * [ ] Build minimal front-end (deposit/withdraw + APY display).
@@ -275,13 +289,13 @@ await allocator.writeContract({
 * [ ] Publish guide + GitHub repo for hackers to fork.
 * [x] Scaffold repo directories: `contracts/`, `frontend/`, `ops/`.
 * [x] Create a basic `forge` project gitignore file in `contracts/`.
-* [ ] Add `.env.example` (RPC, keys) and `config/addresses.ts` placeholders.
-* [ ] Verify Sepolia addresses against docs; record source links.
+* [x] Add `.env.example` (RPC, keys).
+* [x] Verify Sepolia addresses against docs; record source links.
 * [ ] Add Apache‑2.0 LICENSE file.
 
 ---
 
-## 9. Setup & Mocks Page (Testnet UX)
+## 8. Setup & Mocks Page (Testnet UX)
 
 **Purpose:** Provide a single place to mint test assets, inspect balances/supply, and steer oracle prices to simulate market dynamics.
 
@@ -328,7 +342,7 @@ await allocator.writeContract({
 
 ---
 
-## 10. Fast-Feedback Yield (Don’t Wait an Hour)
+## 9. Fast-Feedback Yield (Don’t Wait an Hour)
 
 **Goal:** Make yield movements visible within minutes on Sepolia.
 
@@ -367,12 +381,8 @@ await allocator.writeContract({
 
 ---
 
-## 11. Open Questions / TODOs
+## 10. Open Questions / TODOs
 
-* Confirm which **IRM** contracts are available on Sepolia and how configurable the slope is.
-* Decide collateral/loan asset direction (`fakeTIA` vs `fakeUSD`) for simplest UX.
-* Whether to include a **Merkl-like rewards mock** or keep the demo purely interest-based.
-* Add diagrams for both **Page 1** and **Page 2** flows.
 * Build a **TypeScript bot** that continuously monitors utilization, accrues interest (if needed), and rebalances/borrows to keep APY visible.
 * Write short docs for Page 1 and Page 2 after implementation (how to run, how it works).
 
@@ -384,27 +394,7 @@ await allocator.writeContract({
 
 * Node 20.x (`.nvmrc`), npm.
 * Foundry installed (`forge`/`cast`).
-* `.env.local` (app) and `.env` (scripts) with: `RPC_URL`, `PRIVATE_KEY`, optional `ALCHEMY_KEY`/`INFURA_KEY`.
-
-### Address Book Schema (`config/addresses.ts`)
-
-```
-export const addresses = {
-  tokens: { fakeUSD: "", fakeTIA: "" },
-  oracles: { aggregator: { pair: "fakeTIA/fakeUSD", address: "" }, builtOracle: "" },
-  morpho: {
-    metaMorphoFactory: "",
-    morphoBlueCore: "",
-    oracleV2Factory: "",
-    preLiquidationFactory: "",
-    publicAllocator: "",
-    adaptiveCurveIRM: ""
-  },
-  markets: { sandbox: { id: "", irm: "", lltv: "", loanToken: "", collateralToken: "", oracle: "" } },
-  vaults: { page1Vault: "", customVault: "" },
-  sources: { /* docs links or tx hashes per address */ }
-} as const;
-```
+* `.env` file based on `.env.example`.
 
 ### ABIs & Sources
 
@@ -421,7 +411,7 @@ export const addresses = {
 
 ---
 
-## 12. Notes: Predictable Timing & Yield Observation
+## 11. Notes: Predictable Timing & Yield Observation
 
 | Action                             | Expected Minimal Time Before Visible Effect                                                 |
 | ---------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -474,4 +464,4 @@ export const addresses = {
 **Runtime**
 
 * Env‑driven (`.env`): RPC\_URL, PRIVATE\_KEY, VAULT, MARKET, UTIL\_TARGET, MAX\_BORROW.
-* Cron/PM2/Docker to keep it running during the demo.
+* Cron or PM2 to keep it running during the demo.

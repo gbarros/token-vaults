@@ -14,9 +14,9 @@
     "dev": "tsx --watch"
   },
   "scriptshelp": {
-    "ops:build:oracle": "Builds an oracle using Morpho's ChainlinkOracleV2Factory (alternative to self-deployed).",
-    "ops:extract:oracle": "Extracts oracle address from Morpho factory deployment.",
-    "ops:extract:addresses": "Extracts all contract addresses from Forge deployment artifacts.",
+    "ops:build:oracle": "DEPRECATED - Use Forge script: forge script contracts/script/BuildMorphoOracle.s.sol --broadcast",
+    "ops:extract:oracle": "DEPRECATED - Oracle addresses available in contracts/broadcast artifacts",
+    "ops:extract:addresses": "DEPRECATED - Frontend reads directly from contracts/broadcast artifacts",
     "test:morpho-sdk": "Tests Morpho Blue SDK functionality on Sepolia and compares with manual RPC calls.",
     "debug": "Run debugging scripts from temp/ directory for on-chain analysis.",
     "build": "Compiles TypeScript files.",

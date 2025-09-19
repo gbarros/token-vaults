@@ -13,12 +13,12 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
 
 ### Environment Setup
 
-1. **Ops Scripts** (for contract deployment):
+1. **Forge Scripts** (for contract deployment):
    ```bash
-   cd ops
-   cp .env.example .env
-   # Edit .env with your RPC_URL and PRIVATE_KEY
-   npm install
+   cd contracts
+   cp env.example .env
+   # Edit .env with your RPC_URL, PRIVATE_KEY, and ETHERSCAN_API_KEY
+   forge install
    ```
 
 2. **Frontend** (for the demo UI):
@@ -31,14 +31,22 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
 
 ### Running the Demo
 
-1. **Deploy Contracts** (in order):
+1. **Deploy Contracts** (using Forge scripts):
    ```bash
-   cd ops
-   npm run ops:deploy:tokens      # Deploy faucet tokens
-   npm run ops:deploy:aggregator  # Deploy price aggregator
-   npm run ops:build:oracle       # Build Morpho oracle
-   npm run ops:create:market      # Create sandbox market
-   npm run ops:init:util          # Initialize market utilization
+   cd contracts
+   # Deploy all contracts in sequence with automatic verification
+   forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
+   ./update-env-from-artifacts.sh  # Auto-populate addresses
+   
+   forge script script/DeployAggregator.s.sol --rpc-url $RPC_URL --broadcast --verify
+   ./update-env-from-artifacts.sh  # Auto-populate addresses
+   
+   forge script script/DeployOracle.s.sol --rpc-url $RPC_URL --broadcast --verify
+   ./update-env-from-artifacts.sh  # Auto-populate addresses
+   
+   forge script script/CreateMarket.s.sol --rpc-url $RPC_URL --broadcast --verify
+   forge script script/MintTokens.s.sol --rpc-url $RPC_URL --broadcast
+   forge script script/InitializeUtilization.s.sol --rpc-url $RPC_URL --broadcast
    ```
 
 2. **Start Frontend**:
@@ -46,6 +54,8 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
    cd frontend
    npm run dev
    ```
+   
+   The frontend automatically loads contract addresses from Forge deployment artifacts in `contracts/broadcast/`. No manual configuration needed!
 
 3. **Access Demo**:
    - Open http://localhost:3000
@@ -66,14 +76,15 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 - **Foundry Setup**: Complete build environment with OpenZeppelin dependencies
 
 #### 2. Operations Scripts (`ops/`)
-- **TypeScript Environment**: Full TS project with viem, dotenv, and deployment helpers
-- **Deployment Scripts**:
-  - `deployTokens.ts`: Deploy fakeUSD and fakeTIA tokens
-  - `deployAggregator.ts`: Deploy and initialize price aggregator
-  - `buildOracle.ts`: Create Morpho oracle using Chainlink factory
-  - `createSandboxMarket.ts`: Create Morpho Blue market with demo parameters
-  - `initUtilization.ts`: Supply liquidity and create borrowing to establish ~60% utilization
-- **Address Management**: Automatic updates to `config/addresses.ts` after deployments
+- **TypeScript Environment**: Debugging utilities and on-chain analysis tools
+- **Utility Scripts**:
+  - `buildOracle.ts`: Create Morpho oracle using Chainlink factory (alternative to Forge)
+  - `extractOracleAddress.ts`: Extract oracle addresses from factory deployments
+  - `extractForgeAddresses.ts`: Extract all contract addresses from Forge deployment artifacts
+  - `testMorphoSDK.ts`: Validate Morpho Blue SDK functionality and compare with manual RPC calls
+- **Debugging Tools** (`temp/`): Collection of scripts for market analysis, balance checking, and troubleshooting
+- **Address Management**: Utilities to sync with `config/addresses.ts`
+- **SDK Integration**: Morpho Blue SDK validation and migration analysis
 
 #### 3. Frontend Setup Page (`frontend/src/app/setup/`)
 - **WalletCard**: Connection status, network validation, ETH balance, quick links
@@ -115,14 +126,14 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 │   │       ├── setup/   # Setup page components
 │   │       └── providers/
 │   └── package.json
-├── ops/               # TypeScript deployment scripts
-│   ├── scripts/       # Deployment scripts
+├── ops/               # TypeScript debugging & utility scripts
+│   ├── scripts/       # Utility and debugging scripts
+│   │   ├── testMorphoSDK.ts      # SDK validation
+│   │   ├── extractForgeAddresses.ts  # Address extraction
+│   │   └── temp/      # Debugging utilities
 │   ├── lib/          # Shared utilities
+│   ├── MORPHO-SDK-ANALYSIS.md    # SDK migration guide
 │   └── package.json
-├── config/           # Shared configuration
-│   └── addresses.ts  # Typed address book
-└── packages/         # Shared packages
-    └── abi/         # Contract ABIs
 ```
 
 ## 🔧 Technical Stack
@@ -135,12 +146,14 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 ### Frontend
 - **Next.js 15**: React framework with App Router
 - **Viem + Wagmi**: Ethereum interaction libraries
+- **Morpho Blue SDK**: Official SDK for type-safe Morpho integration (`@morpho-org/blue-sdk@4.11.0`)
 - **TailwindCSS**: Utility-first styling
 - **React Hot Toast**: User notifications
 
 ### Operations
-- **TypeScript**: Type-safe deployment scripts
+- **TypeScript**: Debugging utilities and on-chain analysis
 - **Viem**: Ethereum client for contract interactions
+- **Morpho Blue SDK**: SDK validation and testing utilities
 - **Node.js 20**: Runtime environment
 
 ## 📖 Morpho Integration
@@ -154,6 +167,29 @@ This demo integrates with Morpho's infrastructure on Sepolia:
 - **Public Allocator**: `0xfd32fA2ca22c76dD6E550706Ad913FC6CE91c75D`
 
 *Source: [Morpho Addresses](https://docs.morpho.org/get-started/resources/addresses?utm_source=chatgpt.com), [IRM on Sepolia Etherscan](https://sepolia.etherscan.io/address/0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c#code)*
+
+## 🔧 SDK Integration
+
+This project includes comprehensive **Morpho Blue SDK** integration:
+
+### SDK Validation
+```bash
+# Test SDK functionality on Sepolia
+cd ops
+npm run test:morpho-sdk
+```
+
+### Key Features
+- **Type-safe market parameter creation** with automatic ID generation
+- **Verified data consistency** between SDK and manual RPC calls  
+- **Performance optimization** with no significant overhead
+- **Migration guide** available in `ops/MORPHO-SDK-ANALYSIS.md`
+
+### SDK Packages Used
+- `@morpho-org/blue-sdk@4.11.0` - Core Morpho Blue SDK
+- `@morpho-org/morpho-ts@2.4.2` - Additional Morpho utilities
+
+The SDK provides significant advantages over manual RPC calls including type safety, automatic market ID calculation, and reduced boilerplate code. See the complete analysis in `ops/MORPHO-SDK-ANALYSIS.md`.
 
 ## 🚧 Next Steps (Future Milestones)
 

@@ -1,0 +1,6 @@
+---
+description: Use the Morpho Docs when interacting with Morpho contracts.
+globs:
+alwaysApply: true
+---
+- You should consult the Morpho Docs before searching for information on the internet. Link: https://docs.morpho.org/llms-full.txt

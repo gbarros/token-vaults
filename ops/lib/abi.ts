@@ -1,52 +1,19 @@
-// Minimal ABI fragments for the contracts we need to interact with
+/**
+ * Custom ABI fragments for contracts not covered by Morpho SDK
+ * 
+ * CLEANED UP: Removed redundant ABIs now covered by Morpho SDK:
+ * - morphoBlueAbi -> Use @morpho-org/blue-sdk
+ * - Standard ERC20 functions -> Use viem's built-in erc20Abi
+ * 
+ * REMAINING: Only custom/non-standard ABIs that aren't available elsewhere:
+ * - faucetErc20Abi: Custom faucet functionality (mint, cooldown, etc.)
+ * - settableAggregatorAbi: Test oracle aggregator for price control
+ * - morphoChainlinkOracleV2FactoryAbi: Oracle factory (if not in SDK)
+ */
 
-export const erc20Abi = [
-  {
-    type: 'function',
-    name: 'name',
-    inputs: [],
-    outputs: [{ name: '', type: 'string', internalType: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'symbol',
-    inputs: [],
-    outputs: [{ name: '', type: 'string', internalType: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'decimals',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8', internalType: 'uint8' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'totalSupply',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'approve',
-    inputs: [
-      { name: 'spender', type: 'address', internalType: 'address' },
-      { name: 'amount', type: 'uint256', internalType: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-] as const;
+import { erc20Abi } from 'viem';
+
+// Keep only custom/non-standard ABIs that aren't in Morpho SDK
 
 export const faucetErc20Abi = [
   ...erc20Abi,
@@ -131,150 +98,8 @@ export const settableAggregatorAbi = [
   },
 ] as const;
 
-// Morpho Blue core functions (minimal + market reading + position reading)
-export const morphoBlueAbi = [
-  // Market reading function
-  {
-    type: 'function',
-    name: 'market',
-    inputs: [{ name: 'id', type: 'bytes32', internalType: 'Id' }],
-    outputs: [
-      {
-        name: 'm',
-        type: 'tuple',
-        components: [
-          { name: 'totalSupplyAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalSupplyShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'lastUpdate', type: 'uint128', internalType: 'uint128' },
-          { name: 'fee', type: 'uint128', internalType: 'uint128' },
-        ],
-        internalType: 'struct Market',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  // Position reading function
-  {
-    type: 'function',
-    name: 'position',
-    inputs: [
-      { name: 'id', type: 'bytes32', internalType: 'Id' },
-      { name: 'user', type: 'address', internalType: 'address' },
-    ],
-    outputs: [
-      {
-        name: 'p',
-        type: 'tuple',
-        components: [
-          { name: 'supplyShares', type: 'uint256', internalType: 'uint256' },
-          { name: 'borrowShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'collateral', type: 'uint128', internalType: 'uint128' },
-        ],
-        internalType: 'struct Position',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'createMarket',
-    inputs: [
-      {
-        name: 'marketParams',
-        type: 'tuple',
-        components: [
-          { name: 'loanToken', type: 'address', internalType: 'address' },
-          { name: 'collateralToken', type: 'address', internalType: 'address' },
-          { name: 'oracle', type: 'address', internalType: 'address' },
-          { name: 'irm', type: 'address', internalType: 'address' },
-          { name: 'lltv', type: 'uint256', internalType: 'uint256' },
-        ],
-        internalType: 'struct MarketParams',
-      },
-    ],
-    outputs: [{ name: '', type: 'bytes32', internalType: 'Id' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'supply',
-    inputs: [
-      {
-        name: 'marketParams',
-        type: 'tuple',
-        components: [
-          { name: 'loanToken', type: 'address', internalType: 'address' },
-          { name: 'collateralToken', type: 'address', internalType: 'address' },
-          { name: 'oracle', type: 'address', internalType: 'address' },
-          { name: 'irm', type: 'address', internalType: 'address' },
-          { name: 'lltv', type: 'uint256', internalType: 'uint256' },
-        ],
-        internalType: 'struct MarketParams',
-      },
-      { name: 'assets', type: 'uint256', internalType: 'uint256' },
-      { name: 'shares', type: 'uint256', internalType: 'uint256' },
-      { name: 'onBehalf', type: 'address', internalType: 'address' },
-      { name: 'data', type: 'bytes', internalType: 'bytes' },
-    ],
-    outputs: [
-      { name: '', type: 'uint256', internalType: 'uint256' },
-      { name: '', type: 'uint256', internalType: 'uint256' },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'supplyCollateral',
-    inputs: [
-      {
-        name: 'marketParams',
-        type: 'tuple',
-        components: [
-          { name: 'loanToken', type: 'address', internalType: 'address' },
-          { name: 'collateralToken', type: 'address', internalType: 'address' },
-          { name: 'oracle', type: 'address', internalType: 'address' },
-          { name: 'irm', type: 'address', internalType: 'address' },
-          { name: 'lltv', type: 'uint256', internalType: 'uint256' },
-        ],
-        internalType: 'struct MarketParams',
-      },
-      { name: 'assets', type: 'uint256', internalType: 'uint256' },
-      { name: 'onBehalf', type: 'address', internalType: 'address' },
-      { name: 'data', type: 'bytes', internalType: 'bytes' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'borrow',
-    inputs: [
-      {
-        name: 'marketParams',
-        type: 'tuple',
-        components: [
-          { name: 'loanToken', type: 'address', internalType: 'address' },
-          { name: 'collateralToken', type: 'address', internalType: 'address' },
-          { name: 'oracle', type: 'address', internalType: 'address' },
-          { name: 'irm', type: 'address', internalType: 'address' },
-          { name: 'lltv', type: 'uint256', internalType: 'uint256' },
-        ],
-        internalType: 'struct MarketParams',
-      },
-      { name: 'assets', type: 'uint256', internalType: 'uint256' },
-      { name: 'shares', type: 'uint256', internalType: 'uint256' },
-      { name: 'onBehalf', type: 'address', internalType: 'address' },
-      { name: 'receiver', type: 'address', internalType: 'address' },
-    ],
-    outputs: [
-      { name: '', type: 'uint256', internalType: 'uint256' },
-      { name: '', type: 'uint256', internalType: 'uint256' },
-    ],
-    stateMutability: 'nonpayable',
-  },
-] as const;
+// Note: Morpho Blue ABIs are now available via @morpho-org/blue-sdk
+// Use the SDK for all Morpho Blue contract interactions instead of manual ABIs
 
 // Morpho Chainlink Oracle V2 Factory
 export const morphoChainlinkOracleV2FactoryAbi = [

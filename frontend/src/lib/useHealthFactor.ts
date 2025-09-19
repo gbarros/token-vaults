@@ -1,63 +1,9 @@
 import { useReadContract, useAccount } from 'wagmi';
-import { formatEther, formatUnits } from 'viem';
-import { contracts } from './contracts';
-
-// Import the shared ABI from ops
-const morphoBlueAbi = [
-  {
-    type: 'function',
-    name: 'market',
-    inputs: [{ name: 'id', type: 'bytes32', internalType: 'Id' }],
-    outputs: [
-      {
-        name: 'm',
-        type: 'tuple',
-        components: [
-          { name: 'totalSupplyAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalSupplyShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowAssets', type: 'uint128', internalType: 'uint128' },
-          { name: 'totalBorrowShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'lastUpdate', type: 'uint128', internalType: 'uint128' },
-          { name: 'fee', type: 'uint128', internalType: 'uint128' },
-        ],
-        internalType: 'struct Market',
-      },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'position',
-    inputs: [
-      { name: 'id', type: 'bytes32', internalType: 'Id' },
-      { name: 'user', type: 'address', internalType: 'address' },
-    ],
-    outputs: [
-      {
-        name: 'p',
-        type: 'tuple',
-        components: [
-          { name: 'supplyShares', type: 'uint256', internalType: 'uint256' },
-          { name: 'borrowShares', type: 'uint128', internalType: 'uint128' },
-          { name: 'collateral', type: 'uint128', internalType: 'uint128' },
-        ],
-        internalType: 'struct Position',
-      },
-    ],
-    stateMutability: 'view',
-  },
-] as const;
-
-// Oracle ABI for price reading
-const oracleAbi = [
-  {
-    type: 'function',
-    name: 'price',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
-] as const;
+import { formatEther } from 'viem';
+import { Market, Position } from '@morpho-org/blue-sdk';
+import { contracts, getMarketParams } from './contracts';
+import { morphoBlueAbi, oracleAbi } from './abis';
+import { parseMarketData, parsePositionData } from './sdkUtils';
 
 export interface HealthFactorData {
   healthFactor: string;
@@ -73,13 +19,16 @@ export interface HealthFactorData {
 
 export function useHealthFactor(customPrice?: bigint): HealthFactorData {
   const { address: userAddress } = useAccount();
+  
+  // Use centralized market parameters from singleton
+  const marketParams = getMarketParams();
 
   // Read user position
   const { data: positionData, isLoading: positionLoading, error: positionError } = useReadContract({
     address: contracts.morpho.morphoBlueCore,
     abi: morphoBlueAbi,
     functionName: 'position',
-    args: userAddress ? [contracts.markets.sandbox.id as `0x${string}`, userAddress] : undefined,
+    args: userAddress && marketParams ? [marketParams.id as `0x${string}`, userAddress] : undefined,
     query: {
       enabled: !!userAddress,
       refetchInterval: 30000,
@@ -92,7 +41,7 @@ export function useHealthFactor(customPrice?: bigint): HealthFactorData {
     address: contracts.morpho.morphoBlueCore,
     abi: morphoBlueAbi,
     functionName: 'market',
-    args: [contracts.markets.sandbox.id as `0x${string}`],
+    args: marketParams ? [marketParams.id as `0x${string}`] : undefined,
     query: {
       refetchInterval: 30000,
       staleTime: 15000,
@@ -101,7 +50,7 @@ export function useHealthFactor(customPrice?: bigint): HealthFactorData {
 
   // Read current oracle price (unless custom price is provided)
   const { data: oraclePrice, isLoading: priceLoading, error: priceError } = useReadContract({
-    address: contracts.markets.sandbox.oracle, // Use the market's oracle address
+    address: contracts.markets.sandbox.oracle as `0x${string}`, // Use the market's oracle address
     abi: oracleAbi,
     functionName: 'price',
     query: {
@@ -114,54 +63,130 @@ export function useHealthFactor(customPrice?: bigint): HealthFactorData {
   // Use custom price if provided, otherwise use oracle price
   const currentPrice = customPrice || oraclePrice || BigInt(0);
 
-  // Calculate health metrics (accessing the tuple fields correctly)
-  const borrowShares = positionData?.borrowShares || BigInt(0);
-  const collateralAmount = positionData?.collateral || BigInt(0);
+  // Check if we have all required data
+  if (!marketData || !positionData || !currentPrice || !marketParams) {
+    return {
+      healthFactor: 'N/A',
+      isHealthy: true,
+      borrowedAmount: '0.00',
+      collateralAmount: '0.00',
+      maxBorrowCapacity: '0.00',
+      liquidationPrice: '0.00',
+      hasPosition: false,
+      isLoading: positionLoading || marketLoading || priceLoading,
+      error: !!(positionError || marketError || priceError),
+    };
+  }
+
+  // Parse SDK ABI tuple to structured object
+  const positionDataStruct = parsePositionData(positionData);
+  const borrowShares = positionDataStruct.borrowShares || BigInt(0);
+  const collateralAmount = positionDataStruct.collateral || BigInt(0);
   const hasPosition = borrowShares > BigInt(0) || collateralAmount > BigInt(0);
 
-  // Calculate borrowed amount using share-to-assets conversion
-  // borrowed = borrowShares * totalBorrowAssets / totalBorrowShares (rounded up)
-  const totalBorrowAssets = marketData?.totalBorrowAssets || BigInt(0);
-  const totalBorrowShares = marketData?.totalBorrowShares || BigInt(0);
-  
-  const borrowedAmount = totalBorrowShares > BigInt(0)
-    ? (borrowShares * totalBorrowAssets + totalBorrowShares - BigInt(1)) / totalBorrowShares // Round up
-    : BigInt(0);
+  if (!hasPosition) {
+    return {
+      healthFactor: 'N/A',
+      isHealthy: true,
+      borrowedAmount: '0.00',
+      collateralAmount: '0.00',
+      maxBorrowCapacity: '0.00',
+      liquidationPrice: '0.00',
+      hasPosition: false,
+      isLoading: false,
+      error: false,
+    };
+  }
 
-  // Calculate max borrow capacity
-  // maxBorrow = collateral * price / ORACLE_PRICE_SCALE * lltv
-  const ORACLE_PRICE_SCALE = BigInt('1000000000000000000000000000000000000'); // 1e36
-  const lltv = BigInt(contracts.markets.sandbox.lltv); // Already in 18 decimals
-  
-  const maxBorrowCapacity = collateralAmount > BigInt(0) && currentPrice > BigInt(0)
-    ? (collateralAmount * currentPrice * lltv) / (ORACLE_PRICE_SCALE * BigInt('1000000000000000000')) // Divide by 1e18 for lltv
-    : BigInt(0);
+  try {
+    // Parse SDK ABI tuple to structured object
+    const marketDataStruct = parseMarketData(marketData);
 
-  // Calculate health factor
-  // Health Factor = maxBorrowCapacity / borrowedAmount
-  const healthFactor = borrowedAmount > BigInt(0) && maxBorrowCapacity > BigInt(0)
-    ? (Number(maxBorrowCapacity) / Number(borrowedAmount)).toFixed(3)
-    : borrowedAmount > BigInt(0) ? '0.000' : '∞';
+    // Create SDK Market instance with real data including price
+    const market = new Market({
+      params: marketParams,
+      totalSupplyAssets: marketDataStruct.totalSupplyAssets,
+      totalSupplyShares: marketDataStruct.totalSupplyShares,
+      totalBorrowAssets: marketDataStruct.totalBorrowAssets,
+      totalBorrowShares: marketDataStruct.totalBorrowShares,
+      lastUpdate: marketDataStruct.lastUpdate,
+      fee: marketDataStruct.fee,
+      price: customPrice || oraclePrice, // Include price for health factor calculations
+    });
 
-  const isHealthy = borrowedAmount === BigInt(0) || maxBorrowCapacity >= borrowedAmount;
+    // Create SDK Position instance (requires user and marketId)
+    const position = new Position({
+      user: userAddress as `0x${string}`,
+      marketId: marketParams.id, // SDK MarketParams.id is already the correct type
+      supplyShares: positionDataStruct.supplyShares || BigInt(0),
+      borrowShares: positionDataStruct.borrowShares || BigInt(0),
+      collateral: positionDataStruct.collateral || BigInt(0),
+    });
 
-  // Calculate liquidation price
-  // liquidationPrice = (borrowedAmount * ORACLE_PRICE_SCALE * 1e18) / (collateralAmount * lltv)
-  const liquidationPrice = collateralAmount > BigInt(0) && borrowedAmount > BigInt(0)
-    ? (borrowedAmount * ORACLE_PRICE_SCALE * BigInt('1000000000000000000')) / (collateralAmount * lltv)
-    : BigInt(0);
+    // Use SDK methods for accurate calculations
+        const isHealthy = market.isHealthy(position);
+        const healthFactor = market.getHealthFactor(position);
+        const liquidationPrice = market.getLiquidationPrice(position);
+        const borrowedAssets = market.toBorrowAssets(position.borrowShares);
+        const maxBorrowCapacity = market.getMaxBorrowAssets(position.collateral);
+        
 
-  return {
-    healthFactor,
-    isHealthy,
-    borrowedAmount: formatEther(borrowedAmount),
-    collateralAmount: formatEther(collateralAmount),
-    maxBorrowCapacity: formatEther(maxBorrowCapacity),
-    liquidationPrice: liquidationPrice > BigInt(0) ? formatUnits(liquidationPrice, 36) : '0',
-    hasPosition,
-    isLoading: positionLoading || marketLoading || priceLoading,
-    error: !!(positionError || marketError || priceError),
-  };
+        // Format liquidation price properly (it's returned in oracle format - 36 decimals)
+        const formatLiquidationPrice = (price: bigint | number | null | undefined): string => {
+          if (!price) return '0.00';
+          
+          if (typeof price === 'bigint') {
+            // SDK returns liquidation price in oracle format (36 decimals)
+            // Convert to normal price format (aggregator has 8 decimals)
+            const priceInAggregatorDecimals = Number(price) / (10 ** 36) * (10 ** 8);
+            return (priceInAggregatorDecimals / (10 ** 8)).toFixed(8);
+          } else if (typeof price === 'number') {
+            return price.toFixed(8);
+          }
+          return '0.00';
+        };
+
+        return {
+          healthFactor: (() => {
+            if (typeof healthFactor === 'number') {
+              return healthFactor === Infinity ? '∞' : (healthFactor as number).toFixed(3);
+            } else if (typeof healthFactor === 'bigint') {
+              return formatEther(healthFactor as bigint);
+            } else {
+              return 'N/A';
+            }
+          })(),
+          isHealthy: isHealthy ?? false,
+          borrowedAmount: formatEther(borrowedAssets || BigInt(0)),
+          collateralAmount: formatEther(position.collateral),
+          maxBorrowCapacity: formatEther(maxBorrowCapacity || BigInt(0)),
+          liquidationPrice: formatLiquidationPrice(liquidationPrice),
+          hasPosition: true,
+          isLoading: false,
+          error: false,
+        };
+  } catch (error) {
+    console.error('SDK health factor calculation error:', error);
+    
+    // Fallback to basic calculations if SDK fails
+    const marketDataStruct = parseMarketData(marketData);
+    
+    const borrowedAmount = marketDataStruct.totalBorrowShares > BigInt(0)
+      ? (borrowShares * marketDataStruct.totalBorrowAssets + marketDataStruct.totalBorrowShares - BigInt(1)) / marketDataStruct.totalBorrowShares
+      : BigInt(0);
+
+    return {
+      healthFactor: 'Error',
+      isHealthy: false,
+      borrowedAmount: formatEther(borrowedAmount),
+      collateralAmount: formatEther(collateralAmount),
+      maxBorrowCapacity: '0.00',
+      liquidationPrice: '0.00',
+      hasPosition: true,
+      isLoading: false,
+      error: true,
+    };
+  }
 }
 
 // Hook for simulating health factor with different prices
@@ -172,9 +197,10 @@ export function useHealthFactorSimulation(simulatedPrice: string) {
   const aggregatorDecimals = 8;
   const morphoOracleDecimals = 36;
   
-  const priceInWei = simulatedPrice 
+  // Only simulate if we have a valid price string
+  const priceInWei = simulatedPrice && !isNaN(parseFloat(simulatedPrice)) && parseFloat(simulatedPrice) > 0
     ? BigInt(Math.floor(parseFloat(simulatedPrice) * (10 ** aggregatorDecimals))) * BigInt(10 ** (morphoOracleDecimals - aggregatorDecimals))
-    : BigInt(0);
+    : undefined; // Use undefined to fall back to current oracle price
   
   return useHealthFactor(priceInWei);
 }

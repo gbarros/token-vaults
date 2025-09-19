@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
@@ -157,20 +157,46 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
   });
 
   // Write contract for minting
-  const { writeContract, data: mintTxHash, isPending } = useWriteContract();
+  const { writeContract, data: mintTxHash, isPending, error: writeError } = useWriteContract();
 
-  const { isLoading: isMintConfirming } = useWaitForTransactionReceipt({
+  const { isLoading: isMintConfirming, error: mintError } = useWaitForTransactionReceipt({
     hash: mintTxHash,
   });
 
-  // Handle transaction success/error separately
+  // Track if we've already handled this transaction
+  const handledTxRef = useRef<string | null>(null);
+
+  // Handle write contract errors
   React.useEffect(() => {
-    if (mintTxHash && !isMintConfirming) {
-      toast.success(`Successfully minted ${mintAmount} ${tokenSymbol}!`);
-      refetchBalance();
-      onRefresh();
+    if (writeError) {
+      toast.dismiss('mint-tx');
+      toast.error('Failed to initiate mint transaction');
     }
-  }, [mintTxHash, isMintConfirming, mintAmount, tokenSymbol, refetchBalance, onRefresh]);
+  }, [writeError]);
+
+  // Handle transaction success/error separately - only depend on core transaction state
+  React.useEffect(() => {
+    if (mintTxHash && mintTxHash !== handledTxRef.current) {
+      if (mintError) {
+        // Handle transaction error
+        handledTxRef.current = mintTxHash;
+        toast.dismiss('mint-tx');
+        toast.error('Transaction failed. Please try again.');
+      } else if (!isMintConfirming) {
+        // Handle transaction success
+        handledTxRef.current = mintTxHash;
+        
+        // Dismiss the loading toast and show success
+        toast.dismiss('mint-tx');
+        toast.success(`Successfully minted ${mintAmount} ${tokenSymbol}!`);
+        
+        // Call functions without including them in dependencies to prevent infinite loops
+        refetchBalance();
+        onRefresh();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mintTxHash, isMintConfirming, mintError, mintAmount, tokenSymbol]); // Intentionally excluding refetchBalance and onRefresh
 
   const handleMint = async () => {
     if (!userAddress || !tokens[selectedToken]) {
@@ -181,16 +207,18 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
     try {
       const amount = parseEther(mintAmount);
       
+      // Show loading toast immediately
+      toast.loading('Minting tokens...', { id: 'mint-tx' });
+      
       writeContract({
         address: tokens[selectedToken] as `0x${string}`,
         abi: faucetTokenAbi,
         functionName: 'mint',
         args: [userAddress, amount],
       });
-
-      toast.loading('Minting tokens...', { id: 'mint-tx' });
     } catch (error) {
       console.error('Mint error:', error);
+      toast.dismiss('mint-tx');
       toast.error('Failed to initiate mint transaction');
     }
   };

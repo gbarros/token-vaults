@@ -1,6 +1,8 @@
 // Contract addresses and configuration loaded from Forge deployment artifacts
 // This replaces the old manual config/addresses.ts system
 
+import { MarketParams } from '@morpho-org/blue-sdk';
+
 // Types for Forge deployment artifacts
 interface DeploymentTransaction {
   hash: string;
@@ -20,54 +22,171 @@ interface DeploymentArtifact {
 }
 
 // Import deployment artifacts directly from Forge broadcast directory
-import deployTokensArtifact from '../../../contracts/broadcast/DeployTokens.s.sol/11155111/run-latest.json';
-import deployAggregatorArtifact from '../../../contracts/broadcast/DeployAggregator.s.sol/11155111/run-latest.json';
-import deployOracleArtifact from '../../../contracts/broadcast/DeployOracle.s.sol/11155111/run-latest.json';
-import createMarketArtifact from '../../../contracts/broadcast/CreateMarket.s.sol/11155111/run-latest.json';
+// These imports will fail gracefully if artifacts don't exist
+let deployTokensArtifact: DeploymentArtifact | null = null;
+let deployAggregatorArtifact: DeploymentArtifact | null = null;
+let deployOracleArtifact: DeploymentArtifact | null = null;
+let createMarketArtifact: DeploymentArtifact | null = null;
 
-// Extract contract addresses from deployment artifacts
-function getContractAddress(artifact: DeploymentArtifact, contractName: string): string {
-  const transaction = artifact.transactions.find((tx: DeploymentTransaction) => 
-    tx.contractName === contractName && tx.transactionType === 'CREATE'
-  );
-  if (!transaction) {
-    throw new Error(`Contract ${contractName} not found in deployment artifacts`);
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  deployTokensArtifact = require('../../../contracts/broadcast/DeployTokens.s.sol/11155111/run-latest.json');
+} catch {
+  console.warn('⚠️ DeployTokens artifact not found - tokens will not be available');
+}
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  deployAggregatorArtifact = require('../../../contracts/broadcast/DeployAggregator.s.sol/11155111/run-latest.json');
+} catch {
+  console.warn('⚠️ DeployAggregator artifact not found - aggregator will not be available');
+}
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  deployOracleArtifact = require('../../../contracts/broadcast/DeployOracle.s.sol/11155111/run-latest.json');
+} catch {
+  console.warn('⚠️ DeployOracle artifact not found - oracle will not be available');
+}
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  createMarketArtifact = require('../../../contracts/broadcast/CreateMarket.s.sol/11155111/run-latest.json');
+} catch {
+  console.warn('⚠️ CreateMarket artifact not found - market will not be available');
+}
+
+// Centralized address management singleton
+class ContractAddressManager {
+  private static instance: ContractAddressManager;
+  private _addresses: {
+    fakeUSD?: string | null;
+    fakeTIA?: string | null;
+    aggregator?: string | null;
+    oracle?: string | null;
+    marketParams?: MarketParams | null;
+  } = {};
+
+  private constructor() {}
+
+  static getInstance(): ContractAddressManager {
+    if (!ContractAddressManager.instance) {
+      ContractAddressManager.instance = new ContractAddressManager();
+    }
+    return ContractAddressManager.instance;
   }
-  return transaction.contractAddress;
-}
 
-// Extract market ID from market creation logs
-function getMarketId(): string {
-  // The market ID is computed as keccak256(abi.encode(marketParams))
-  // For now, we'll use the hardcoded value from our deployment
-  // TODO: Parse from transaction logs or compute dynamically
-  return '0x0761d379cc7d1212f71ad42bba304a80f1250baa0ad7a615a2501ac5f0e6ccb5';
-}
+  private getContractAddress(artifact: DeploymentArtifact | null, contractName: string): string | null {
+    if (!artifact) {
+      console.warn(`⚠️ Artifact not available for ${contractName}`);
+      return null;
+    }
+    
+    const transaction = artifact.transactions.find((tx: DeploymentTransaction) => 
+      tx.contractName === contractName && tx.transactionType === 'CREATE'
+    );
+    if (!transaction) {
+      console.warn(`⚠️ Contract ${contractName} not found in deployment artifacts`);
+      return null;
+    }
+    return transaction.contractAddress;
+  }
 
-// Contract addresses from Forge deployment artifacts
-export const contracts = {
-  // Deployed tokens
-  tokens: {
-    fakeUSD: getContractAddress(deployTokensArtifact as DeploymentArtifact, 'FaucetERC20') as `0x${string}`,
-    fakeTIA: (() => {
-      // Get the second FaucetERC20 deployment (fakeTIA)
-      const faucetDeployments = (deployTokensArtifact as DeploymentArtifact).transactions.filter((tx: DeploymentTransaction) => 
+  get fakeUSD(): string | null {
+    if (!this._addresses.fakeUSD) {
+      this._addresses.fakeUSD = this.getContractAddress(deployTokensArtifact, 'FaucetERC20');
+    }
+    return this._addresses.fakeUSD;
+  }
+
+  get fakeTIA(): string | null {
+    if (!this._addresses.fakeTIA) {
+      if (!deployTokensArtifact) {
+        console.warn('⚠️ DeployTokens artifact not available for fakeTIA');
+        return null;
+      }
+      
+      const faucetDeployments = deployTokensArtifact.transactions.filter((tx: DeploymentTransaction) =>
         tx.contractName === 'FaucetERC20' && tx.transactionType === 'CREATE'
       );
       if (faucetDeployments.length < 2) {
-        throw new Error('fakeTIA deployment not found');
+        console.warn('⚠️ fakeTIA deployment not found - need at least 2 FaucetERC20 deployments');
+        return null;
       }
-      return faucetDeployments[1].contractAddress;
-    })() as `0x${string}`,
+      this._addresses.fakeTIA = faucetDeployments[1].contractAddress;
+    }
+    return this._addresses.fakeTIA;
+  }
+
+  get aggregator(): string | null {
+    if (!this._addresses.aggregator) {
+      this._addresses.aggregator = this.getContractAddress(deployAggregatorArtifact, 'SettableAggregator');
+    }
+    return this._addresses.aggregator;
+  }
+
+  get oracle(): string | null {
+    if (!this._addresses.oracle) {
+      this._addresses.oracle = this.getContractAddress(deployOracleArtifact, 'OracleFromAggregator');
+    }
+    return this._addresses.oracle;
+  }
+
+  get marketParams(): MarketParams | null {
+    if (!this._addresses.marketParams) {
+      const fakeUSD = this.fakeUSD;
+      const fakeTIA = this.fakeTIA;
+      const oracle = this.oracle;
+      
+      if (!fakeUSD || !fakeTIA || !oracle) {
+        console.warn('⚠️ Cannot create market params - missing required addresses');
+        return null;
+      }
+      
+      this._addresses.marketParams = new MarketParams({
+        loanToken: fakeUSD as `0x${string}`,
+        collateralToken: fakeTIA as `0x${string}`,
+        oracle: oracle as `0x${string}`,
+        irm: '0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c' as `0x${string}`, // Adaptive Curve IRM (Sepolia)
+        lltv: BigInt('860000000000000000'), // 86% LLTV
+      });
+    }
+    return this._addresses.marketParams;
+  }
+
+  get marketId(): string | null {
+    const params = this.marketParams;
+    return params ? params.id : null;
+  }
+}
+
+// Singleton instance
+const addressManager = ContractAddressManager.getInstance();
+
+// Export the address manager and market params for use in other files
+export { addressManager };
+export const getMarketParams = () => addressManager.marketParams;
+
+// Legacy function for backward compatibility
+function getMarketId(): string | null {
+  return addressManager.marketId;
+}
+
+// Contract addresses from Forge deployment artifacts using centralized manager
+export const contracts = {
+  // Deployed tokens
+  tokens: {
+    fakeUSD: addressManager.fakeUSD,
+    fakeTIA: addressManager.fakeTIA,
   },
 
   // Oracle infrastructure
   oracles: {
     aggregator: {
       pair: 'fakeTIA/fakeUSD',
-      address: getContractAddress(deployAggregatorArtifact as DeploymentArtifact, 'SettableAggregator') as `0x${string}`,
+      address: addressManager.aggregator,
     },
-    builtOracle: getContractAddress(deployOracleArtifact as DeploymentArtifact, 'OracleFromAggregator') as `0x${string}`,
+    builtOracle: addressManager.oracle,
   },
 
   // Morpho Blue addresses (Sepolia - these are constants)
@@ -79,20 +198,15 @@ export const contracts = {
     adaptiveCurveIRM: '0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c' as `0x${string}`,
   },
 
-  // Market configuration
+  // Market configuration using centralized manager
   markets: {
     sandbox: {
       id: getMarketId(),
       irm: '0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c' as `0x${string}`,
       lltv: '860000000000000000', // 86% LLTV (18 decimals)
-      loanToken: getContractAddress(deployTokensArtifact as DeploymentArtifact, 'FaucetERC20') as `0x${string}`,
-      collateralToken: (() => {
-        const faucetDeployments = (deployTokensArtifact as DeploymentArtifact).transactions.filter((tx: DeploymentTransaction) => 
-          tx.contractName === 'FaucetERC20' && tx.transactionType === 'CREATE'
-        );
-        return faucetDeployments[1].contractAddress;
-      })() as `0x${string}`,
-      oracle: getContractAddress(deployOracleArtifact as DeploymentArtifact, 'OracleFromAggregator') as `0x${string}`,
+      loanToken: addressManager.fakeUSD,
+      collateralToken: addressManager.fakeTIA,
+      oracle: addressManager.oracle,
     },
   },
 } as const;
