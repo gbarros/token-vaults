@@ -1,0 +1,17 @@
+# Dependencies
+/lib
+
+# Compiled files
+/out
+/cache
+
+# Environment variables
+.env
+.env.*
+
+# Foundry-specific files
+forge-debug.json
+
+# Test coverage
+/lcov-report
+lcov.info
