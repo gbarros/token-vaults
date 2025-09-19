@@ -131,8 +131,52 @@ export const settableAggregatorAbi = [
   },
 ] as const;
 
-// Morpho Blue core functions (minimal)
+// Morpho Blue core functions (minimal + market reading + position reading)
 export const morphoBlueAbi = [
+  // Market reading function
+  {
+    type: 'function',
+    name: 'market',
+    inputs: [{ name: 'id', type: 'bytes32', internalType: 'Id' }],
+    outputs: [
+      {
+        name: 'm',
+        type: 'tuple',
+        components: [
+          { name: 'totalSupplyAssets', type: 'uint128', internalType: 'uint128' },
+          { name: 'totalSupplyShares', type: 'uint128', internalType: 'uint128' },
+          { name: 'totalBorrowAssets', type: 'uint128', internalType: 'uint128' },
+          { name: 'totalBorrowShares', type: 'uint128', internalType: 'uint128' },
+          { name: 'lastUpdate', type: 'uint128', internalType: 'uint128' },
+          { name: 'fee', type: 'uint128', internalType: 'uint128' },
+        ],
+        internalType: 'struct Market',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  // Position reading function
+  {
+    type: 'function',
+    name: 'position',
+    inputs: [
+      { name: 'id', type: 'bytes32', internalType: 'Id' },
+      { name: 'user', type: 'address', internalType: 'address' },
+    ],
+    outputs: [
+      {
+        name: 'p',
+        type: 'tuple',
+        components: [
+          { name: 'supplyShares', type: 'uint256', internalType: 'uint256' },
+          { name: 'borrowShares', type: 'uint128', internalType: 'uint128' },
+          { name: 'collateral', type: 'uint128', internalType: 'uint128' },
+        ],
+        internalType: 'struct Position',
+      },
+    ],
+    stateMutability: 'view',
+  },
   {
     type: 'function',
     name: 'createMarket',

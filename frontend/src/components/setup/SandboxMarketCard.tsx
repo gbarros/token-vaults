@@ -3,7 +3,24 @@
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import toast from 'react-hot-toast';
-import { addresses } from '../../config/addresses';
+import { contracts } from '../../lib/contracts';
+import { useMarketData } from '../../lib/useMarketData';
+
+// Helper function to create Etherscan Sepolia links
+const getEtherscanLink = (address: string) => `https://sepolia.etherscan.io/address/${address}`;
+
+// Component for clickable address links
+const AddressLink = ({ address, label }: { address: string; label?: string }) => (
+  <a
+    href={getEtherscanLink(address)}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-600 hover:text-blue-800 underline font-mono text-xs break-all"
+    title={`View ${label || 'address'} on Etherscan Sepolia`}
+  >
+    {address}
+  </a>
+);
 
 interface SandboxMarketCardProps {
   onRefresh: () => void;
@@ -17,21 +34,21 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
   void _isCreating;
   void _setIsCreating;
 
-  const marketData = addresses.markets.sandbox;
+  // Get real market data
+  const marketMetrics = useMarketData();
+
+  const marketData = contracts.markets.sandbox;
   const isMarketCreated = marketData.id && marketData.id !== '';
 
   const handleCreateMarket = async () => {
     toast('Market creation requires running the ops script. Please use the terminal command below.');
   };
 
-  const handleInitUtilization = async () => {
-    toast('Utilization initialization requires running the ops script. Please use the terminal command below.');
-  };
 
   // Check if all prerequisites are met
-  const hasTokens = addresses.tokens.fakeUSD && addresses.tokens.fakeTIA;
-  const hasOracle = addresses.oracles.builtOracle;
-  const hasMorphoAddresses = addresses.morpho.morphoBlueCore && addresses.morpho.adaptiveCurveIRM;
+  const hasTokens = contracts.tokens.fakeUSD && contracts.tokens.fakeTIA;
+  const hasOracle = contracts.oracles.builtOracle;
+  const hasMorphoAddresses = contracts.morpho.morphoBlueCore && contracts.morpho.adaptiveCurveIRM;
 
   const canCreateMarket = hasTokens && hasOracle && hasMorphoAddresses;
 
@@ -59,7 +76,7 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
                 <span>Faucet Tokens Deployed</span>
               </div>
               <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-2 ${addresses.oracles.aggregator.address ? 'bg-green-500' : 'bg-red-500'}`} />
+                <div className={`w-2 h-2 rounded-full mr-2 ${contracts.oracles.aggregator.address ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span>Price Aggregator Deployed</span>
               </div>
               <div className="flex items-center">
@@ -79,26 +96,44 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Loan Token:</span>
-                <div className="font-mono text-xs mt-1 break-all">
-                  {addresses.tokens.fakeUSD || 'Not deployed'}
+                <div className="mt-1">
+                  {contracts.tokens.fakeUSD ? (
+                    <AddressLink address={contracts.tokens.fakeUSD} label="fakeUSD token" />
+                  ) : (
+                    <span className="text-gray-400 text-xs">Not deployed</span>
+                  )}
                 </div>
               </div>
               <div>
                 <span className="text-gray-600">Collateral Token:</span>
-                <div className="font-mono text-xs mt-1 break-all">
-                  {addresses.tokens.fakeTIA || 'Not deployed'}
+                <div className="mt-1">
+                  {contracts.tokens.fakeTIA ? (
+                    <AddressLink address={contracts.tokens.fakeTIA} label="fakeTIA token" />
+                  ) : (
+                    <span className="text-gray-400 text-xs">Not deployed</span>
+                  )}
                 </div>
               </div>
               <div>
                 <span className="text-gray-600">Oracle:</span>
-                <div className="font-mono text-xs mt-1 break-all">
-                  {addresses.oracles.builtOracle || 'Not built'}
+                <div className="mt-1">
+                  {contracts.oracles.builtOracle ? (
+                    <AddressLink address={contracts.oracles.builtOracle} label="Oracle contract" />
+                  ) : (
+                    <span className="text-gray-400 text-xs">Not built</span>
+                  )}
                 </div>
               </div>
               <div>
                 <span className="text-gray-600">IRM:</span>
-                <div className="font-mono text-xs mt-1 break-all">
-                  {addresses.morpho.adaptiveCurveIRM}
+                <div className="mt-1">
+                  <AddressLink address={contracts.morpho.adaptiveCurveIRM} label="Adaptive Curve IRM" />
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-600">Morpho Blue:</span>
+                <div className="mt-1">
+                  <AddressLink address={contracts.morpho.morphoBlueCore} label="Morpho Blue Core" />
                 </div>
               </div>
               <div className="col-span-2">
@@ -155,14 +190,6 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
               </div>
             )}
 
-            {isMarketCreated && (
-              <button
-                onClick={handleInitUtilization}
-                className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              >
-                Initialize Utilization
-              </button>
-            )}
           </div>
 
           {/* Terminal Commands */}
@@ -176,14 +203,14 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
                   <span className="text-green-400">npm run ops:deploy:tokens</span>
                 </div>
               )}
-              {!addresses.oracles.aggregator.address && (
+              {!contracts.oracles.aggregator.address && (
                 <div>
                   <span className="text-gray-400"># Deploy aggregator:</span>
                   <br />
                   <span className="text-green-400">npm run ops:deploy:aggregator</span>
                 </div>
               )}
-              {!hasOracle && addresses.oracles.aggregator.address && (
+              {!hasOracle && contracts.oracles.aggregator.address && (
                 <div>
                   <span className="text-gray-400"># Build oracle:</span>
                   <br />
@@ -207,31 +234,55 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
             </div>
           </div>
 
-          {/* Market Metrics (placeholder for when market is active) */}
+          {/* Market Metrics (real-time data from chain) */}
           {isMarketCreated && (
             <div className="border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Market Metrics</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                Market Metrics
+                {marketMetrics.isLoading && (
+                  <svg className="animate-spin ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {marketMetrics.error && (
+                  <span className="ml-2 text-red-500 text-xs">⚠️ Error loading</span>
+                )}
+              </h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Utilization:</span>
-                  <span className="ml-2 font-medium">0.00%</span>
+                  <span className={`ml-2 font-medium ${marketMetrics.error ? 'text-red-500' : ''}`}>
+                    {marketMetrics.error ? 'Error' : `${marketMetrics.utilization}%`}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Supply APR:</span>
-                  <span className="ml-2 font-medium">0.00%</span>
+                  <span className={`ml-2 font-medium ${marketMetrics.error ? 'text-red-500' : ''}`}>
+                    {marketMetrics.error ? 'Error' : `${marketMetrics.supplyAPR}%`}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Borrow APR:</span>
-                  <span className="ml-2 font-medium">0.00%</span>
+                  <span className={`ml-2 font-medium ${marketMetrics.error ? 'text-red-500' : ''}`}>
+                    {marketMetrics.error ? 'Error' : `${marketMetrics.borrowAPR}%`}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Total Supply:</span>
-                  <span className="ml-2 font-medium">0.00</span>
+                  <span className={`ml-2 font-medium ${marketMetrics.error ? 'text-red-500' : ''}`}>
+                    {marketMetrics.error ? 'Error' : `${parseFloat(marketMetrics.totalSupply).toFixed(2)}`}
+                  </span>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                * Metrics will update after utilization initialization
-              </p>
+              <div className="mt-2 text-xs text-gray-500">
+                <p>
+                  📊 Total Borrowed: {marketMetrics.error ? 'Error' : `${parseFloat(marketMetrics.totalBorrow).toFixed(2)}`} fakeUSD
+                </p>
+                <p className="mt-1">
+                  🔄 Updates every 30s • APR calculated from IRM
+                </p>
+              </div>
             </div>
           )}
         </div>

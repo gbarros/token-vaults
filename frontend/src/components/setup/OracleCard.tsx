@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import toast from 'react-hot-toast';
-import { addresses } from '../../config/addresses';
+import { contracts } from '../../lib/contracts';
+import { useHealthFactor, useHealthFactorSimulation } from '../../lib/useHealthFactor';
 
 // Minimal Aggregator ABI
 const aggregatorAbi = [
@@ -56,7 +57,13 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
   const { address: userAddress, isConnected } = useAccount();
   const [customPrice, setCustomPrice] = useState('5.00');
 
-  const aggregatorAddress = addresses.oracles.aggregator.address;
+  // Get current health factor
+  const currentHealth = useHealthFactor();
+  
+  // Get simulated health factor for the custom price
+  const simulatedHealth = useHealthFactorSimulation(customPrice);
+
+  const aggregatorAddress = contracts.oracles.aggregator.address;
 
   // Read oracle data
   const { data: latestRoundData, refetch: refetchPrice } = useReadContract({
@@ -153,7 +160,7 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
     handleSetPrice(newPriceStr);
   };
 
-  const isAggregatorDeployed = aggregatorAddress && aggregatorAddress !== '';
+  const isAggregatorDeployed = Boolean(aggregatorAddress);
   const isUpdating = isPending || isSetPriceConfirming;
 
   // Format current price
@@ -198,7 +205,7 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
                 {currentPrice}
               </div>
               <div className="text-sm text-gray-600">
-                {description || addresses.oracles.aggregator.pair}
+                {description || contracts.oracles.aggregator.pair}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Last updated: {lastUpdate}
@@ -276,6 +283,99 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
             </div>
           </div>
 
+          {/* Health Factor Display */}
+          {isConnected && (
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                Health Factor Monitor
+                {currentHealth.isLoading && (
+                  <svg className="animate-spin ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+              </h4>
+
+              {!currentHealth.hasPosition ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                  <p className="text-sm text-blue-800">
+                    💡 No position found. Supply collateral and borrow to see health factor.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Current Health Status */}
+                  <div className={`rounded-md p-3 ${
+                    currentHealth.error ? 'bg-red-50 border border-red-200' :
+                    currentHealth.isHealthy ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`text-sm font-medium ${
+                          currentHealth.error ? 'text-red-800' :
+                          currentHealth.isHealthy ? 'text-green-800' : 'text-red-800'
+                        }`}>
+                          Current Health Factor: {currentHealth.error ? 'Error' : currentHealth.healthFactor}
+                        </p>
+                        <p className={`text-xs ${
+                          currentHealth.error ? 'text-red-600' :
+                          currentHealth.isHealthy ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {currentHealth.error ? 'Failed to load' :
+                           currentHealth.isHealthy ? 'Position is healthy' : '⚠️ Position at risk of liquidation'}
+                        </p>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${
+                        currentHealth.error ? 'bg-red-500' :
+                        currentHealth.isHealthy ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
+                    </div>
+                  </div>
+
+                  {/* Position Details */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="bg-gray-50 rounded-md p-2">
+                      <span className="text-gray-600">Collateral:</span>
+                      <div className="font-medium">{parseFloat(currentHealth.collateralAmount).toFixed(4)} fakeTIA</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-md p-2">
+                      <span className="text-gray-600">Borrowed:</span>
+                      <div className="font-medium">{parseFloat(currentHealth.borrowedAmount).toFixed(4)} fakeUSD</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-md p-2">
+                      <span className="text-gray-600">Max Borrow:</span>
+                      <div className="font-medium">{parseFloat(currentHealth.maxBorrowCapacity).toFixed(4)} fakeUSD</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-md p-2">
+                      <span className="text-gray-600">Liquidation Price:</span>
+                      <div className="font-medium">{parseFloat(currentHealth.liquidationPrice).toFixed(8)}</div>
+                    </div>
+                  </div>
+
+                  {/* Price Impact Simulation */}
+                  {customPrice && customPrice !== currentPrice && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                      <p className="text-sm font-medium text-blue-800 mb-2">
+                        💡 Price Impact Simulation
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-blue-700">
+                            Health Factor at {customPrice}: {simulatedHealth.healthFactor}
+                          </p>
+                          <p className={`text-xs ${simulatedHealth.isHealthy ? 'text-green-600' : 'text-red-600'}`}>
+                            {simulatedHealth.isHealthy ? '✅ Would remain healthy' : '⚠️ Would be at risk'}
+                          </p>
+                        </div>
+                        <div className={`w-3 h-3 rounded-full ${simulatedHealth.isHealthy ? 'bg-green-500' : 'bg-red-500'}`} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Warning */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
             <div className="flex">
@@ -284,7 +384,7 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
               </svg>
               <div>
                 <p className="text-sm text-yellow-800">
-                  Price changes affect collateral values and health factors in the market.
+                  Monitor your health factor before changing prices. Values below 1.0 indicate liquidation risk.
                 </p>
               </div>
             </div>

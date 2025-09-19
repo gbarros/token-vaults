@@ -3,14 +3,15 @@ import { sepolia } from 'wagmi/chains';
 import { injected, metaMask, walletConnect } from 'wagmi/connectors';
 
 // Get project ID from environment (optional for basic setup)
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id';
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
 export const config = createConfig({
   chains: [sepolia],
   connectors: [
     injected(),
     metaMask(),
-    walletConnect({ 
+    // Only include WalletConnect if project ID is provided
+    ...(projectId ? [walletConnect({ 
       projectId,
       metadata: {
         name: 'Morpho Vaults Demo',
@@ -18,7 +19,7 @@ export const config = createConfig({
         url: 'https://localhost:3000',
         icons: ['https://avatars.githubusercontent.com/u/86327202?s=200&v=4'],
       },
-    }),
+    })] : []),
   ],
   transports: {
     [sepolia.id]: http(),

@@ -1,32 +1,30 @@
 {
   "name": "morpho-vaults-ops",
   "version": "1.0.0",
-  "description": "Operational scripts for Morpho Vaults demo",
+  "description": "Debugging and utility scripts for Morpho Vaults (deployment handled by Forge)",
   "main": "index.js",
   "scripts": {
     "help": "npm-scripts-help",
-    "ops:deploy:tokens": "tsx scripts/deployTokens.ts",
-    "ops:deploy:aggregator": "tsx scripts/deployAggregator.ts",
-    "ops:deploy:oracle": "tsx scripts/deployOracle.ts",
     "ops:build:oracle": "tsx scripts/buildOracle.ts",
-    "ops:create:market": "tsx scripts/createSandboxMarket.ts",
-    "ops:mint:tokens": "tsx scripts/mintTokens.ts",
-    "ops:init:util": "tsx scripts/initUtilization.ts",
+    "ops:extract:oracle": "tsx scripts/extractOracleAddress.ts",
+    "ops:extract:addresses": "tsx scripts/extractForgeAddresses.ts",
+    "test:morpho-sdk": "tsx scripts/testMorphoSDK.ts",
+    "debug": "tsx scripts/temp/",
     "build": "tsc",
     "dev": "tsx --watch"
   },
   "scriptshelp": {
-    "ops:deploy:tokens": "Deploys mock ERC20 tokens (e.g., fakeUSD, fakeTIA) for the sandbox.",
-    "ops:deploy:aggregator": "Deploys a settable Chainlink-compatible aggregator for oracle price mocking.",
-    "ops:deploy:oracle": "Deploys a self-deployed oracle that reads from the mock aggregator.",
     "ops:build:oracle": "Builds an oracle using Morpho's ChainlinkOracleV2Factory (alternative to self-deployed).",
-    "ops:create:market": "Creates a sandbox Morpho Blue market with deployed tokens and oracle.",
-    "ops:mint:tokens": "Mints mock ERC20 tokens to the configured wallet addresses via faucet.",
-    "ops:init:util": "Initializes market utilization by supplying collateral and borrowing.",
+    "ops:extract:oracle": "Extracts oracle address from Morpho factory deployment.",
+    "ops:extract:addresses": "Extracts all contract addresses from Forge deployment artifacts.",
+    "test:morpho-sdk": "Tests Morpho Blue SDK functionality on Sepolia and compares with manual RPC calls.",
+    "debug": "Run debugging scripts from temp/ directory for on-chain analysis.",
     "build": "Compiles TypeScript files.",
     "dev": "Runs the TypeScript watcher."
   },
   "dependencies": {
+    "@morpho-org/blue-sdk": "^4.11.0",
+    "@morpho-org/morpho-ts": "^2.4.2",
     "dotenv": "^16.4.5",
     "viem": "^2.21.0"
   },

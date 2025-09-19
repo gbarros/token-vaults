@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
-import { addresses } from '../../config/addresses';
+import { contracts } from '../../lib/contracts';
 
 // Minimal ERC20 + Faucet ABI
 const faucetTokenAbi = [
@@ -98,8 +98,8 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
   const [selectedToken, setSelectedToken] = useState<'fakeUSD' | 'fakeTIA'>('fakeUSD');
 
   const tokens = {
-    fakeUSD: addresses.tokens.fakeUSD,
-    fakeTIA: addresses.tokens.fakeTIA,
+    fakeUSD: contracts.tokens.fakeUSD,
+    fakeTIA: contracts.tokens.fakeTIA,
   };
 
   // Read contract data for selected token
@@ -195,7 +195,7 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
     }
   };
 
-  const isTokenDeployed = tokens[selectedToken] && tokens[selectedToken] !== '';
+  const isTokenDeployed = Boolean(tokens[selectedToken]);
   const isMinting = isPending || isMintConfirming;
 
   return (
