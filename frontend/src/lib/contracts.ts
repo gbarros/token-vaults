@@ -27,6 +27,7 @@ let deployTokensArtifact: DeploymentArtifact | null = null;
 let deployAggregatorArtifact: DeploymentArtifact | null = null;
 let deployOracleArtifact: DeploymentArtifact | null = null;
 let createMarketArtifact: DeploymentArtifact | null = null;
+let deployVaultArtifact: DeploymentArtifact | null = null;
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -56,6 +57,13 @@ try {
   console.warn('⚠️ CreateMarket artifact not found - market will not be available');
 }
 
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  deployVaultArtifact = require('../../../contracts/broadcast/DeployVault.s.sol/11155111/run-latest.json');
+} catch {
+  console.warn('⚠️ DeployVault artifact not found - vault will not be available');
+}
+
 // Centralized address management singleton
 class ContractAddressManager {
   private static instance: ContractAddressManager;
@@ -65,6 +73,7 @@ class ContractAddressManager {
     aggregator?: string | null;
     oracle?: string | null;
     marketParams?: MarketParams | null;
+    vault?: string | null;
   } = {};
 
   private constructor() {}
@@ -158,6 +167,44 @@ class ContractAddressManager {
     const params = this.marketParams;
     return params ? params.id : null;
   }
+
+  get vault(): string | null {
+    if (!this._addresses.vault) {
+      // Extract vault address from deployment artifacts (factory-deployed via CREATE2)
+      if (deployVaultArtifact) {
+        // Look for MetaMorpho factory call transaction
+        const factoryTransaction = deployVaultArtifact.transactions.find((tx: DeploymentTransaction) => 
+          tx.transactionType === 'CALL' && tx.function && tx.function.includes('createMetaMorpho')
+        );
+        
+        if (factoryTransaction && factoryTransaction.additionalContracts) {
+          // Find the CREATE2 deployment in additionalContracts
+          const additionalContracts = factoryTransaction.additionalContracts as Array<{
+            transactionType: string;
+            address: string;
+          }>;
+          
+          const vaultContract = additionalContracts.find(contract => 
+            contract.transactionType === 'CREATE2'
+          );
+          
+          if (vaultContract) {
+            this._addresses.vault = vaultContract.address;
+          } else {
+            console.warn('⚠️ Vault CREATE2 deployment not found in additionalContracts');
+            this._addresses.vault = null;
+          }
+        } else {
+          console.warn('⚠️ MetaMorpho factory transaction not found in deployment artifacts');
+          this._addresses.vault = null;
+        }
+      } else {
+        console.warn('⚠️ DeployVault artifact not available');
+        this._addresses.vault = null;
+      }
+    }
+    return this._addresses.vault;
+  }
 }
 
 // Singleton instance
@@ -209,6 +256,16 @@ export const contracts = {
       oracle: addressManager.oracle,
     },
   },
+
+  // Vault configuration
+  vaults: {
+    metaMorphoDemo: {
+      address: addressManager.vault,
+      asset: addressManager.fakeUSD, // fakeUSD is the vault's underlying asset
+      name: 'Morpho Demo Vault',
+      symbol: 'mdUSD',
+    },
+  },
 } as const;
 
 // Export individual addresses for convenience
@@ -217,6 +274,7 @@ export const {
   oracles,
   morpho,
   markets,
+  vaults,
 } = contracts;
 
 // Deployment metadata
@@ -254,6 +312,7 @@ export function validateContracts(): boolean {
       contracts.markets.sandbox.loanToken,
       contracts.markets.sandbox.collateralToken,
       contracts.markets.sandbox.oracle,
+      contracts.vaults.metaMorphoDemo.address,
     ];
 
     for (const address of allAddresses) {

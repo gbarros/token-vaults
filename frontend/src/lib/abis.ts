@@ -3,7 +3,8 @@
 
 import { 
   blueAbi as sdkBlueAbi, 
-  adaptiveCurveIrmAbi as sdkAdaptiveCurveIrmAbi 
+  adaptiveCurveIrmAbi as sdkAdaptiveCurveIrmAbi,
+  metaMorphoAbi as sdkMetaMorphoAbi
 } from '@morpho-org/blue-sdk-viem';
 
 /**
@@ -217,6 +218,12 @@ export const legacyMorphoBlueAbi = [
 ] as const;
 
 /**
+ * MetaMorpho Vault ABI from official SDK
+ * Contains all ERC-4626 functions plus vault-specific management functions
+ */
+export const metaMorphoAbi = sdkMetaMorphoAbi;
+
+/**
  * Adaptive Curve IRM ABI from official SDK
  * For getting borrow rates from the Interest Rate Model
  */
@@ -327,6 +334,16 @@ export const erc20Abi = [
     name: 'name',
     inputs: [],
     outputs: [{ name: '', type: 'string', internalType: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'allowance',
+    inputs: [
+      { name: 'owner', type: 'address', internalType: 'address' },
+      { name: 'spender', type: 'address', internalType: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
     stateMutability: 'view',
   },
 ] as const;

@@ -3,16 +3,24 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useState, useEffect } from 'react';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted before showing wallet-dependent UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'Setup', href: '/setup' },
+    ...(mounted && isConnected ? [{ name: 'Vaults', href: '/vaults' }] : []),
   ];
 
   return (

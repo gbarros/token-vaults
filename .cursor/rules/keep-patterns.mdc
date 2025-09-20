@@ -1,0 +1,7 @@
+---
+description: Don't ignore existing patterns
+globs:
+alwaysApply: true
+---
+- This is an existing project, if many dependencies and repreating patterns, don't ignore them.
+- If you are adding a new component, object, element, etc., check for existing patterns and use them if possible.

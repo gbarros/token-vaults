@@ -257,7 +257,7 @@ For this demo, we will implement **Option B (Direct to Morpho Blue)** first.
   * Chainlink‑compatible aggregator deployed; self‑deployed oracle contract wired to it (no factory on Sepolia); price controllable in UI with presets.
   * Sandbox market ready: either deployed via UI (or script) using our tokens + oracle + IRM, and seeded to target utilization via an "Initialize utilization" action.
 
-* **M1:** Page 1 live on Sepolia (deposit/withdraw + APY view working against a MetaMorpho v1.1 vault).
+* **M1:** Page 1 live on Sepolia (deposit/withdraw + APY view working against a MetaMorpho v1.1 vault). ✅ **COMPLETE**
 * **M2:** Ops scripts runnable on Sepolia (roles assigned, caps set, `reallocate` succeeds with visible effect across multiple markets).
 * **M3:** Page 2 prototype implementing **Option B (Custom vault → Morpho Blue)** with minimal but working flow.
 
@@ -282,9 +282,9 @@ For this demo, we will implement **Option B (Direct to Morpho Blue)** first.
 * [x] Collect Sepolia addresses from Morpho docs.
 * [x] Deploy a toy market (or use an existing test market).
 * [x] Prefer: deploy a sandbox market (own tokens, oracle, IRM) from UI or script.
-* [ ] Deploy MetaMorpho vault via factory.
-* [ ] Script role assignment, cap setup, reallocation.
-* [ ] Build minimal front-end (deposit/withdraw + APY display).
+* [x] Deploy MetaMorpho vault via factory.
+* [x] Script role assignment, cap setup, reallocation.
+* [x] Build minimal front-end (deposit/withdraw + APY display).
 * [ ] Create second-page demo with custom vault (**Option B: direct to Morpho Blue**).
 * [ ] Publish guide + GitHub repo for hackers to fork.
 * [x] Scaffold repo directories: `contracts/`, `frontend/`, `ops/`.

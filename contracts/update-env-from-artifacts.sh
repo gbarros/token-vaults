@@ -36,6 +36,27 @@ extract_address() {
     fi
 }
 
+# Function to extract vault address from DeployVault.s.sol artifacts
+extract_vault_address() {
+    local script_name=$1
+    local artifact_file="$BROADCAST_DIR/$script_name/11155111/run-latest.json"
+    
+    if [ -f "$artifact_file" ]; then
+        # Extract vault address from additionalContracts array (CREATE2 deployment)
+        if command -v jq &> /dev/null; then
+            # Look for CREATE2 transaction in additionalContracts
+            address=$(jq -r '.transactions[] | select(.function and (.function | contains("createMetaMorpho"))) | .additionalContracts[]? | select(.transactionType == "CREATE2") | .address' "$artifact_file" 2>/dev/null)
+        else
+            # Fallback to grep - extract address from additionalContracts CREATE2
+            address=$(grep -A 20 "createMetaMorpho" "$artifact_file" | grep -A 5 "CREATE2" | grep "address" | head -1 | sed 's/.*"address": "\([^"]*\)".*/\1/')
+        fi
+        
+        if [ "$address" != "null" ] && [ -n "$address" ] && [ "$address" != "" ]; then
+            echo "$address"
+        fi
+    fi
+}
+
 # Function to update env variable
 update_env_var() {
     local var_name=$1
@@ -74,6 +95,9 @@ AGGREGATOR=$(extract_address "DeployAggregator.s.sol" "SettableAggregator" | hea
 # Oracle from DeployOracle.s.sol
 ORACLE=$(extract_address "DeployOracle.s.sol" "OracleFromAggregator" | head -1)
 
+# Vault from DeployVault.s.sol (extract from createMetaMorpho call result)
+VAULT=$(extract_vault_address "DeployVault.s.sol")
+
 # Update .env file
 echo ""
 echo "📝 Updating .env file..."
@@ -82,6 +106,7 @@ update_env_var "LOAN_TOKEN" "$FAKE_USD"
 update_env_var "COLLATERAL_TOKEN" "$FAKE_TIA"
 update_env_var "AGGREGATOR_ADDRESS" "$AGGREGATOR"
 update_env_var "ORACLE_ADDRESS" "$ORACLE"
+update_env_var "VAULT_ADDRESS" "$VAULT"
 
 # Clean up backup
 rm -f "${ENV_FILE}.bak"
@@ -94,5 +119,6 @@ echo "  LOAN_TOKEN (fakeUSD): $FAKE_USD"
 echo "  COLLATERAL_TOKEN (fakeTIA): $FAKE_TIA"
 echo "  AGGREGATOR_ADDRESS: $AGGREGATOR"
 echo "  ORACLE_ADDRESS: $ORACLE"
+echo "  VAULT_ADDRESS: $VAULT"
 echo ""
 echo "💡 Run this script after each deployment to keep .env in sync!"

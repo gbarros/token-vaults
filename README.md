@@ -45,6 +45,10 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
    ./update-env-from-artifacts.sh  # Auto-populate addresses
    
    forge script script/CreateMarket.s.sol --rpc-url $RPC_URL --broadcast --verify
+   
+   # NEW in M1: Deploy MetaMorpho vault
+   forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
+   
    forge script script/MintTokens.s.sol --rpc-url $RPC_URL --broadcast
    forge script script/InitializeUtilization.s.sol --rpc-url $RPC_URL --broadcast
    ```
@@ -61,6 +65,7 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
    - Open http://localhost:3000
    - Connect your wallet (Sepolia testnet)
    - Visit `/setup` to interact with the sandbox
+   - Visit `/vaults` to interact with the MetaMorpho vault (NEW in M1)
 
 ## 📋 Milestone M0: "Setting the Stage"
 
@@ -191,12 +196,212 @@ npm run test:morpho-sdk
 
 The SDK provides significant advantages over manual RPC calls including type safety, automatic market ID calculation, and reduced boilerplate code. See the complete analysis in `ops/MORPHO-SDK-ANALYSIS.md`.
 
-## 🚧 Next Steps (Future Milestones)
+## 📋 Milestone M1: "Simple Morpho Integration"
 
-### M1: Simple Morpho Integration
-- Use existing MetaMorpho vaults for yield
-- ERC-4626 deposit/withdraw flows
-- APY display and vault metrics
+**Status: ✅ COMPLETED**
+
+This milestone implements a complete frontend for interacting with MetaMorpho v1.1 vaults on Sepolia.
+
+### ✅ Deliverables Completed
+
+#### 1. Vault Deployment Infrastructure (`contracts/script/`)
+- **DeployVault.s.sol**: Complete Forge script for MetaMorpho vault deployment
+- **Role Management**: Automated setup of Owner, Curator, Allocator roles
+- **Simplified Deployment**: Core vault creation only (configuration via frontend)
+- **Environment Integration**: Uses addresses from `update-env-from-artifacts.sh`
+
+#### 2. Frontend Vault Interface (`frontend/src/app/vaults/`)
+- **Vault Overview**: Real-time vault metrics, governance info, and status
+- **Performance Dashboard**: APY calculation, share price tracking, and performance metrics
+- **Allocation Strategy**: Market allocation breakdown and queue visualization
+- **Transaction Interface**: Deposit/withdraw flows with approval handling
+- **Vault Administration**: Owner-only panel for supply caps, queue management, and reallocation
+- **Educational Content**: Timing expectations, yield mechanics, and MetaMorpho behavior explanation
+
+#### 3. Data Layer (`frontend/src/hooks/`)
+- **useVaultData**: Complete vault state management with real-time updates
+- **useVaultAPY**: Weighted APY calculation based on market allocations
+- **useVaultAllocation**: Market allocation tracking and queue management
+- **useMarketData**: Underlying market metrics and utilization rates
+- **useSupplyCap**: Supply cap monitoring and pending cap tracking
+- **useTokenBalance/useTokenAllowance**: ERC20 token interaction helpers
+
+#### 4. Integration Features
+- **Morpho SDK Integration**: Official ABIs from `@morpho-org/blue-sdk-viem`
+- **Real-time Updates**: Automatic data refresh with configurable intervals
+- **Transaction Handling**: Complete approve/deposit/withdraw flows with status tracking
+- **Error Handling**: Graceful fallbacks and user-friendly error messages
+- **Responsive Design**: Mobile-friendly interface with Tailwind CSS
+
+### 🎯 Key Features Implemented
+
+1. **ERC-4626 Vault Interface**
+   - Deposit fakeUSD tokens to receive vault shares
+   - Withdraw vault shares to receive underlying assets
+   - Real-time share price calculation and display
+   - Preview functionality for deposit/withdraw amounts
+
+2. **Yield Optimization Display**
+   - Weighted APY calculation across allocated markets
+   - Market utilization and supply rate tracking
+   - Allocation strategy visualization
+   - Performance metrics and timing expectations
+
+3. **Risk Management Visualization**
+   - Supply caps and utilization limits
+   - Queue-based withdrawal mechanics
+   - Governance role transparency
+   - Market risk profile display
+
+4. **Developer Experience**
+   - Automatic address loading from Forge deployment artifacts
+   - Type-safe contract interactions with official Morpho ABIs
+   - Comprehensive error handling and loading states
+   - Educational content for hackathon participants
+
+### 🔧 Technical Implementation
+
+- **Smart Contracts**: Foundry-based deployment with MetaMorpho factory integration
+- **Frontend**: Next.js 15 with React Query for state management
+- **Web3 Integration**: Wagmi + Viem for Ethereum interactions
+- **Type Safety**: Full TypeScript implementation with Morpho SDK types
+- **Real-time Data**: Configurable polling intervals for live updates
+
+### 🚀 Usage Instructions
+
+1. **Deploy Vault** (requires valid private key):
+   ```bash
+   cd contracts
+   forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
+   ./update-env-from-artifacts.sh  # Auto-populate VAULT_ADDRESS
+   ```
+
+2. **Start Frontend**:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. **Configure Vault** (owner-only, required for first use):
+   - Connect wallet to Sepolia testnet (must be the deployer account)
+   - Navigate to `/vaults` page
+   - **Expand "Vault Administration"** panel (purple header)
+   - **Set Supply Cap**: Enter desired cap (e.g., 1000000) and click "Submit Cap" → "Accept Cap"
+   - **Add Market to Supply Queue**: Click to enable the market for deposits
+   - **Verify Configuration**: Check that supply cap shows in Vault Overview
+
+4. **Use Vault Interface**:
+   - **Get Test Tokens**: Visit `/setup` page to mint fakeUSD if needed
+   - **Deposit**: Use Vault Actions → Deposit tab (auto-allocated to markets)
+   - **Monitor Performance**: Watch real-time APY and allocation
+   - **Withdraw**: Use Vault Actions → Withdraw tab to redeem shares
+
+### 🔄 What's New in M1
+
+The M1 milestone adds complete MetaMorpho vault functionality to the existing M0 sandbox:
+
+#### New Deployment Script
+- **`DeployVault.s.sol`**: Deploys MetaMorpho v1.1 vault using environment variables
+- **Automatic Role Setup**: Owner, Curator, Allocator roles assigned to deployer
+- **No Hardcoded Addresses**: Uses environment variables populated by `update-env-from-artifacts.sh`
+
+#### New Frontend Route
+- **`/vaults` page**: Complete vault interface for deposit/withdraw operations
+- **Real-time APY**: Weighted APY calculation based on market allocations
+- **Share Price Tracking**: Live ERC-4626 share price updates
+- **Transaction Flows**: Approve/deposit/withdraw with status tracking
+
+#### Enhanced Address Management
+- **Automatic Detection**: Frontend loads vault address from Forge deployment artifacts
+- **Artifact-First Approach**: No hardcoded fallbacks - ensures deployment consistency
+- **Factory Contract Support**: Handles CREATE2 deployments from MetaMorpho factory
+- **Type Safety**: Full TypeScript integration with Morpho SDK ABIs
+
+The M0 sandbox (tokens, oracle, market) remains unchanged and is required for M1 vault functionality.
+
+## 🔧 Vault Configuration Guide
+
+### 📋 Post-Deployment Setup (Required)
+
+After deploying the vault, you **must configure it** before users can deposit:
+
+#### **Step 1: Set Supply Cap**
+```
+1. Connect deployer wallet to frontend
+2. Navigate to /vaults page
+3. Expand "Vault Administration" (purple panel)
+4. In "Supply Cap Management":
+   - Enter desired cap (e.g., 1000000 for 1M fakeUSD)
+   - Click "Submit Cap" 
+   - Click "Accept Cap" (available immediately since timelock = 0)
+```
+
+#### **Step 2: Add Market to Supply Queue**
+```
+1. In "Supply Queue Management":
+   - Click "Add Market to Supply Queue"
+   - This enables the market for automatic deposit allocation
+```
+
+#### **Step 3: Verify Configuration**
+```
+1. Check Vault Overview shows "Supply Cap: 1,000,000 fakeUSD" (green)
+2. Admin panel should show "Portfolio Auto-Allocated" status
+3. Allocation Strategy should show the market in Supply Queue
+```
+
+### 🎯 Understanding MetaMorpho Auto-Allocation
+
+**Key Insight**: MetaMorpho vaults **automatically allocate deposits** to markets in the supply queue.
+
+#### **When Deposits Auto-Allocate:**
+- ✅ Market is in `supplyQueue`
+- ✅ Market has `supplyCap > 0` 
+- ✅ Deposit amount ≤ remaining cap space
+- ✅ Market is healthy (no reverts)
+
+#### **When Manual Reallocation is Needed:**
+- 🔄 **Strategy changes**: Moving funds between different markets
+- 🔄 **Preparing for withdrawals**: Moving funds from markets to idle
+- 🔄 **Risk management**: Adjusting exposure across markets
+- 🔄 **Queue is empty**: No markets configured for auto-allocation
+
+#### **Common Issues:**
+- **"AllCapsReached" error**: Supply cap too low or not set
+- **"0% APY"**: Market has no borrowers (normal in testing)
+- **Funds not allocating**: Market not in supply queue
+
+### 🛠️ Troubleshooting
+
+#### **Issue: Deposits Fail with "AllCapsReached"**
+```bash
+# Check supply cap
+cd contracts && source .env
+cast call 0x0b26B391e53cB5360A29c3c7Cb5904Cf3f3C3705 "config(bytes32)" "0x0761d379cc7d1212f71ad42bba304a80f1250baa0ad7a615a2501ac5f0e6ccb5" --rpc-url $RPC_URL
+
+# Solution: Increase supply cap via frontend admin panel
+```
+
+#### **Issue: 0% APY Despite Deposits**
+```bash
+# Check market utilization
+cd contracts && source .env  
+cast call $MORPHO_BLUE_CORE "market(bytes32)" "0x0761d379cc7d1212f71ad42bba304a80f1250baa0ad7a615a2501ac5f0e6ccb5" --rpc-url $RPC_URL
+
+# If no borrowers: APY will be 0% (normal in testing)
+# Solution: Create borrow activity or wait for organic usage
+```
+
+#### **Issue: Frontend Shows Incorrect Data**
+```bash
+# Verify actual vault state
+cd ops
+npx tsx scripts/verifyVaultState.ts
+
+# Check browser console for hook debugging logs
+```
+
+## 🚧 Next Steps (Future Milestones)
 
 ### M2: Custom Vault Implementation
 - Deploy custom ERC-4626 vault
@@ -211,6 +416,53 @@ The SDK provides significant advantages over manual RPC calls including type saf
 ## 📄 License
 
 Apache-2.0
+
+## 🍴 Forking This Repository
+
+### 📋 For Hackathon Developers
+
+This repository is designed to be **fork-friendly** for hackathon participants:
+
+#### **Quick Fork Setup:**
+```bash
+# 1. Fork the repository on GitHub
+# 2. Clone your fork
+git clone https://github.com/YOUR_USERNAME/vaults-example.git
+cd vaults-example
+
+# 3. Set up environment
+cd contracts
+cp env.example .env
+# Edit .env with your PRIVATE_KEY, RPC_URL, ETHERSCAN_API_KEY
+
+cd ../frontend  
+cp .env.local.example .env.local
+# Edit .env.local if needed (optional)
+
+# 4. Deploy your own contracts
+cd ../contracts
+forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
+./update-env-from-artifacts.sh
+# ... continue with all deployment scripts
+
+# 5. Configure your vault via frontend
+cd ../frontend
+npm run dev
+# Follow vault configuration steps above
+```
+
+#### **Customization Options:**
+- **Vault Parameters**: Change name, symbol, timelock in `DeployVault.s.sol`
+- **Supply Caps**: Adjust via frontend admin panel
+- **Market Selection**: Modify `getMarketParams()` in `contracts.ts` to use different markets
+- **Frontend Styling**: Customize Tailwind CSS components
+- **Polling Intervals**: Adjust refresh rates in hook files
+
+### 📚 Key Files to Understand:
+- **`contracts/script/DeployVault.s.sol`**: Vault deployment logic
+- **`frontend/src/lib/contracts.ts`**: Address management and market configuration
+- **`frontend/src/hooks/`**: Data fetching and state management
+- **`frontend/src/components/vaults/`**: UI components for vault interaction
 
 ## 🤝 Contributing
 
