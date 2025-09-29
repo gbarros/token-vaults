@@ -21,6 +21,8 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
    forge install
    ```
 
+RPC_URL will be where we send transactions when deploying our contracts. It can be obtained from TODO: TBD Eden provider. TODO: edit to not require ETHERSCAN_API_KEY.
+
 2. **Frontend** (for the demo UI):
    ```bash
    cd frontend
@@ -36,19 +38,20 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
 1. **Deploy Contracts** (using Forge scripts):
    ```bash
    cd contracts
+   git submodule update --init --recursive
+   source .env
    # Deploy all contracts in sequence with automatic verification
-   forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --env-file .env --verify
+   forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
    ./update-env-from-artifacts.sh  # Auto-populate addresses
 
-   forge script script/DeployAggregator.s.sol --rpc-url $RPC_URL --broadcast --env-file .env --verify
+   forge script script/DeployAggregator.s.sol --rpc-url $RPC_URL --broadcast --verify
    ./update-env-from-artifacts.sh  # Auto-populate addresses
 
-   forge script script/DeployOracle.s.sol --rpc-url $RPC_URL --broadcast --env-file .env --verify
+   forge script script/DeployOracle.s.sol --rpc-url $RPC_URL --broadcast --verify
    ./update-env-from-artifacts.sh  # Auto-populate addresses
 
    forge script script/CreateMarket.s.sol --rpc-url $RPC_URL --broadcast --verify
 
-   # NEW in M1: Deploy MetaMorpho vault
    forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
 
    forge script script/MintTokens.s.sol --rpc-url $RPC_URL --verify --broadcast
@@ -58,6 +61,7 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
 2. **Start Frontend**:
    ```bash
    cd frontend
+   npm install
    npm run dev
    ```
 
@@ -66,8 +70,10 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
 3. **Access Demo**:
    - Open http://localhost:3000
    - Connect your wallet (Sepolia testnet)
-   - Visit `/setup` to interact with the sandbox
-   - Visit `/vaults` to interact with the MetaMorpho vault (NEW in M1)
+   - Visit `/setup` to interact with the sandbox. Set a supply cap and "Submit Cap" and "Accept Cap". Then Add Market to Supply Queue, click to enable deposits.
+   - Visit `/vaults` to interact with the MetaMorpho vault
+
+---
 
 ## 📋 Milestone M0: "Setting the Stage"
 
