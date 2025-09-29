@@ -29,28 +29,30 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
    npm install
    ```
 
+<!--TODO: .env.local.example doesn't exist, make the example file-->
+
 ### Running the Demo
 
 1. **Deploy Contracts** (using Forge scripts):
    ```bash
    cd contracts
    # Deploy all contracts in sequence with automatic verification
-   forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
+   forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --env-file .env --verify
    ./update-env-from-artifacts.sh  # Auto-populate addresses
-   
-   forge script script/DeployAggregator.s.sol --rpc-url $RPC_URL --broadcast --verify
+
+   forge script script/DeployAggregator.s.sol --rpc-url $RPC_URL --broadcast --env-file .env --verify
    ./update-env-from-artifacts.sh  # Auto-populate addresses
-   
-   forge script script/DeployOracle.s.sol --rpc-url $RPC_URL --broadcast --verify
+
+   forge script script/DeployOracle.s.sol --rpc-url $RPC_URL --broadcast --env-file .env --verify
    ./update-env-from-artifacts.sh  # Auto-populate addresses
-   
+
    forge script script/CreateMarket.s.sol --rpc-url $RPC_URL --broadcast --verify
-   
+
    # NEW in M1: Deploy MetaMorpho vault
    forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
-   
-   forge script script/MintTokens.s.sol --rpc-url $RPC_URL --broadcast
-   forge script script/InitializeUtilization.s.sol --rpc-url $RPC_URL --broadcast
+
+   forge script script/MintTokens.s.sol --rpc-url $RPC_URL --verify --broadcast
+   forge script script/InitializeUtilization.s.sol --rpc-url $RPC_URL --verify --broadcast
    ```
 
 2. **Start Frontend**:
@@ -58,7 +60,7 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
    cd frontend
    npm run dev
    ```
-   
+
    The frontend automatically loads contract addresses from Forge deployment artifacts in `contracts/broadcast/`. No manual configuration needed!
 
 3. **Access Demo**:
@@ -186,7 +188,7 @@ npm run test:morpho-sdk
 
 ### Key Features
 - **Type-safe market parameter creation** with automatic ID generation
-- **Verified data consistency** between SDK and manual RPC calls  
+- **Verified data consistency** between SDK and manual RPC calls
 - **Performance optimization** with no significant overhead
 - **Migration guide** available in `ops/MORPHO-SDK-ANALYSIS.md`
 
@@ -332,7 +334,7 @@ After deploying the vault, you **must configure it** before users can deposit:
 3. Expand "Vault Administration" (purple panel)
 4. In "Supply Cap Management":
    - Enter desired cap (e.g., 1000000 for 1M fakeUSD)
-   - Click "Submit Cap" 
+   - Click "Submit Cap"
    - Click "Accept Cap" (available immediately since timelock = 0)
 ```
 
@@ -356,7 +358,7 @@ After deploying the vault, you **must configure it** before users can deposit:
 
 #### **When Deposits Auto-Allocate:**
 - ✅ Market is in `supplyQueue`
-- ✅ Market has `supplyCap > 0` 
+- ✅ Market has `supplyCap > 0`
 - ✅ Deposit amount ≤ remaining cap space
 - ✅ Market is healthy (no reverts)
 
@@ -385,7 +387,7 @@ cast call 0x0b26B391e53cB5360A29c3c7Cb5904Cf3f3C3705 "config(bytes32)" "0x0761d3
 #### **Issue: 0% APY Despite Deposits**
 ```bash
 # Check market utilization
-cd contracts && source .env  
+cd contracts && source .env
 cast call $MORPHO_BLUE_CORE "market(bytes32)" "0x0761d379cc7d1212f71ad42bba304a80f1250baa0ad7a615a2501ac5f0e6ccb5" --rpc-url $RPC_URL
 
 # If no borrowers: APY will be 0% (normal in testing)
@@ -435,7 +437,7 @@ cd contracts
 cp env.example .env
 # Edit .env with your PRIVATE_KEY, RPC_URL, ETHERSCAN_API_KEY
 
-cd ../frontend  
+cd ../frontend
 cp .env.local.example .env.local
 # Edit .env.local if needed (optional)
 
