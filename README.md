@@ -71,6 +71,7 @@ RPC_URL will be where we send transactions when deploying our contracts. It can 
    - Open http://localhost:3000
    - Connect your wallet (Sepolia testnet)
    - Visit `/setup` to interact with the sandbox. Set a supply cap and "Submit Cap" and "Accept Cap". Then Add Market to Supply Queue, click to enable deposits.
+   - Use same account to set oracle as deploying vaults.
    - Visit `/vaults` to interact with the MetaMorpho vault
 
 ---
