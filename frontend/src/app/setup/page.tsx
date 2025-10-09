@@ -40,10 +40,10 @@ export default function SetupPage() {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-yellow-800">
-                Sepolia Testnet Required
+                Eden Testnet Required
               </h3>
               <p className="mt-1 text-sm text-yellow-700">
-                This demo requires connection to Sepolia testnet. Make sure your wallet is connected to the correct network.
+                This demo requires connection to Eden Testnet. Make sure your wallet is connected to the correct network.
               </p>
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function SetupPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-medium text-blue-800">Network:</span>
-              <span className="ml-2 text-blue-700">Sepolia Testnet</span>
+              <span className="ml-2 text-blue-700">Eden Testnet</span>
             </div>
             <div>
               <span className="font-medium text-blue-800">Deployment:</span>
@@ -107,7 +107,7 @@ export default function SetupPage() {
             All tokens are testnet-only and have no real value.
           </p>
           <p className="mt-1">
-            Built with Morpho Blue v1.1 on Sepolia testnet using Forge deployment scripts.
+            Built with Morpho Blue v1.1 on Eden Testnet using Forge deployment scripts.
           </p>
         </div>
       </div>

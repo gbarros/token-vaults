@@ -26,7 +26,7 @@ export default function VaultsPage() {
                 Please connect your wallet to access vault functionality.
               </p>
               <p className="text-sm text-gray-500">
-                Make sure you&apos;re connected to Sepolia testnet.
+                Make sure you&apos;re connected to Eden Testnet.
               </p>
             </div>
           </div>

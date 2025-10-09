@@ -384,7 +384,7 @@ export function VaultAdmin() {
                     <span className="text-xs font-medium text-yellow-800">Current Market</span>
                   </div>
                   <p className="text-xs text-yellow-700">
-                    fakeUSD/fakeTIA (86% LLTV)
+                    fakeUSD/fakeTIA (80% LLTV)
                   </p>
                   <p className="text-xs text-yellow-600 mt-1 font-mono">
                     ID: {marketParams.id.slice(0, 10)}...{marketParams.id.slice(-8)}

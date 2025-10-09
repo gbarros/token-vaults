@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev ERC20 token with a public faucet for testnet use
  */
 contract FaucetERC20 is ERC20, Ownable {
-    uint256 public maxMintPerCall = 1000 * 10**18; // 1000 tokens default
+    uint256 public maxMintPerCall = 2000 * 10**18; // 2000 tokens default
     uint256 public cooldownSeconds = 60; // 60 seconds default
     
     mapping(address => uint256) public lastMintTime;

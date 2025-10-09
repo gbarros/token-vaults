@@ -10,8 +10,8 @@ import { useMarketInsights } from '../../lib/useMarketInsights';
 import { morphoBlueAbi, erc20Abi } from '../../lib/abis';
 import { marketParamsToAbi } from '../../lib/sdkUtils';
 
-// Helper function to create Etherscan Sepolia links
-const getEtherscanLink = (address: string) => `https://sepolia.etherscan.io/address/${address}`;
+// Helper function to create Blockscout Eden Testnet links
+const getEtherscanLink = (address: string) => `https://explorer-eden-testnet.binarybuilders.services/address/${address}`;
 
 // Component for clickable address links
 const AddressLink = ({ address, label }: { address: string; label?: string }) => (
@@ -20,7 +20,7 @@ const AddressLink = ({ address, label }: { address: string; label?: string }) =>
     target="_blank"
     rel="noopener noreferrer"
     className="text-blue-600 hover:text-blue-800 underline font-mono text-xs break-all"
-    title={`View ${label || 'address'} on Etherscan Sepolia`}
+    title={`View ${label || 'address'} on Blockscout`}
   >
     {address}
   </a>
@@ -211,7 +211,7 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
 
   // Check if all prerequisites are met
   const hasTokens = contracts.tokens.fakeUSD && contracts.tokens.fakeTIA;
-  const hasOracle = contracts.oracles.builtOracle;
+  const hasOracle = contracts.oracles.oracle;
   const canCreateMarket = hasTokens && hasOracle;
 
   return (
@@ -259,10 +259,10 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
               <div>
                 <span className="text-gray-600">Oracle:</span>
               <div className="mt-1">
-                {contracts.oracles.builtOracle ? (
-                  <AddressLink address={contracts.oracles.builtOracle} label="Oracle contract" />
+                {contracts.oracles.oracle ? (
+                  <AddressLink address={contracts.oracles.oracle} label="Oracle contract" />
                 ) : (
-                  <span className="text-gray-400 text-xs">Not built</span>
+                  <span className="text-gray-400 text-xs">Not deployed</span>
                 )}
                 </div>
               </div>

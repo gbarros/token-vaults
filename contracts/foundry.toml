@@ -9,7 +9,7 @@ remappings = [
 ]
 
 [rpc_endpoints]
-sepolia = "http://localhost:8545"
+eden = "https://ev-reth-eden-testnet.binarybuilders.services:8545"
 
 [fmt]
 line_length = 100

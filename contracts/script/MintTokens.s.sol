@@ -17,13 +17,13 @@ contract MintTokensScript is Script {
         console.log("Minting tokens to deployer...");
         console.log("Deployer:", deployer);
         
-        // Mint 200 loan tokens (fakeUSD)
-        FaucetERC20(loanToken).mint(deployer, 200e18);
-        console.log("Minted 200 fakeUSD to deployer");
+        // Mint enough tokens for all initialization scenarios
+        // Covers Low (30%), Medium (60%), and High (80%) utilization scenarios
+        FaucetERC20(loanToken).mint(deployer, 2000e18);
+        console.log("Minted 2000 fakeUSD to deployer");
         
-        // Mint 100 collateral tokens (fakeTIA)
-        FaucetERC20(collateralToken).mint(deployer, 100e18);
-        console.log("Minted 100 fakeTIA to deployer");
+        FaucetERC20(collateralToken).mint(deployer, 1500e18);
+        console.log("Minted 1500 fakeTIA to deployer");
         
         vm.stopBroadcast();
         
@@ -34,6 +34,10 @@ contract MintTokensScript is Script {
         console.log("\n=== FINAL BALANCES ===");
         console.log("fakeUSD balance:", loanBalance / 1e18);
         console.log("fakeTIA balance:", collateralBalance / 1e18);
+        console.log("\nSufficient for all initialization scenarios:");
+        console.log("  - Low (30%): ~1,300 fakeUSD + 400 fakeTIA");
+        console.log("  - Medium (60%): ~1,600 fakeUSD + 800 fakeTIA");
+        console.log("  - High (80%): ~1,900 fakeUSD + 1,200 fakeTIA");
         console.log("=====================");
     }
 }

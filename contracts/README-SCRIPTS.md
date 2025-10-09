@@ -6,8 +6,12 @@ This directory contains Forge scripts that replace the TypeScript ops scripts fo
 
 ### Core Deployment Scripts
 - **`DeployTokens.s.sol`** - Deploy fakeUSD and fakeTIA faucet tokens
-- **`DeployAggregator.s.sol`** - Deploy SettableAggregator for price control
-- **`DeployOracle.s.sol`** - Deploy custom OracleFromAggregator (36-decimal scaling)
+
+**Oracle Options (choose one):**
+- **`DeployOracleMock.s.sol`** - Deploy simple OracleMock (easiest, no aggregator needed) ⭐ **Recommended for EDEN**
+- **`DeployAggregator.s.sol`** + **`DeployOracle.s.sol`** - Deploy SettableAggregator + OracleFromAggregator (Chainlink-compatible)
+
+**Market & Vault:**
 - **`CreateMarket.s.sol`** - Create Morpho Blue sandbox market
 - **`DeployVault.s.sol`** - Deploy MetaMorpho v1.1 vault with role setup
 - **`InitializeUtilization.s.sol`** - Initialize market with liquidity and borrowing (basic)
@@ -18,10 +22,13 @@ This directory contains Forge scripts that replace the TypeScript ops scripts fo
 - **`AnalyzeAndInitialize.s.sol`** - Comprehensive market analysis and auto-initialization
 
 ### Utility Scripts
-- **`UpdateAggregatorPrice.s.sol`** - Update aggregator price for testing
-- **`BuildMorphoOracle.s.sol`** - Build oracle using Morpho's factory (alternative)
+- **`MintTokens.s.sol`** - Mint tokens (2000 fakeUSD + 1500 fakeTIA) - **Required before initialization**
+- **`UpdateOracleMockPrice.s.sol`** - Update OracleMock price for testing
+- **`UpdateAggregatorPrice.s.sol`** - Update aggregator price for testing (if using OracleFromAggregator)
 - **`TestBorrowing.s.sol`** - Test borrowing functionality
-- **`MintTokens.s.sol`** - Mint additional tokens for testing
+
+### Alternative Scripts (Not Typically Used)
+- **`BuildMorphoOracle.s.sol`** - Build oracle using Morpho's factory (requires MORPHO_ORACLE_FACTORY on network)
 
 ## 🚀 Usage
 
@@ -29,40 +36,61 @@ This directory contains Forge scripts that replace the TypeScript ops scripts fo
 ```bash
 # Copy and fill REQUIRED variables only
 cp env.example .env
-# Edit .env with your private key, RPC URL, and Etherscan API key
+# Edit .env with your private key and RPC URL (Eden Testnet)
+# ETHERSCAN_API_KEY not required for Blockscout verification
 # DO NOT manually fill contract addresses - they auto-populate from deployments
 ```
 
+**Note**: We use the named RPC endpoint `eden` (defined in `foundry.toml`) instead of `--rpc-url $RPC_URL`. This is cleaner and avoids redundancy.
+
 ### 2. Deploy in Sequence
+
+#### Deployment Sequence (Eden Testnet)
 ```bash
+# Note: Using 'eden' RPC endpoint defined in foundry.toml
+
 # 1. Deploy tokens
-forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
+forge script script/DeployTokens.s.sol \
+  --rpc-url eden \
+  --broadcast \
+  --verify \
+  --verifier blockscout \
+  --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
 ./update-env-from-artifacts.sh  # Auto-populate LOAN_TOKEN, COLLATERAL_TOKEN
 
-# 2. Deploy aggregator  
-forge script script/DeployAggregator.s.sol --rpc-url $RPC_URL --broadcast --verify
-./update-env-from-artifacts.sh  # Auto-populate AGGREGATOR_ADDRESS
-
-# 3. Deploy oracle
-forge script script/DeployOracle.s.sol --rpc-url $RPC_URL --broadcast --verify
+# 2. Deploy OracleMock (simple, no aggregator needed)
+INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol \
+  --rpc-url eden \
+  --broadcast \
+  --verify \
+  --verifier blockscout \
+  --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
 ./update-env-from-artifacts.sh  # Auto-populate ORACLE_ADDRESS
 
-# 4. Create market
-forge script script/CreateMarket.s.sol --rpc-url $RPC_URL --broadcast --verify
+# 3. Create market
+forge script script/CreateMarket.s.sol --rpc-url eden --broadcast
 
-# 5. Deploy MetaMorpho vault (NEW in M1)
-forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
+# 4. Deploy MetaMorpho vault
+forge script script/DeployVault.s.sol --rpc-url eden --broadcast
+./update-env-from-artifacts.sh # Auto-populate VAULT_ADDRESS
+
+# 5. Mint tokens for initialization
+# IMPORTANT: Fresh deployments start with 0 balance
+# MintTokens gives 2000 fakeUSD + 1500 fakeTIA (enough for all scenarios)
+forge script script/MintTokens.s.sol --rpc-url eden --broadcast
 
 # 6. Initialize utilization (choose one)
-# Option A: Basic initialization (original)
-forge script script/InitializeUtilization.s.sol --rpc-url $RPC_URL --broadcast
+# Option A: Basic initialization
+forge script script/InitializeUtilization.s.sol --rpc-url eden --broadcast
 
 # Option B: Improved initialization with scenarios
-INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast
+INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast
 
 # Option C: Analyze and auto-initialize
-AUTO_FIX=true forge script script/AnalyzeAndInitialize.s.sol --rpc-url $RPC_URL --broadcast
+AUTO_FIX=true forge script script/AnalyzeAndInitialize.s.sol --rpc-url eden --broadcast
 ```
+
+**Note**: Eden doesn't have Chainlink support, so we use a simple `OracleMock` instead of the more complex `SettableAggregator` + `OracleFromAggregator` pattern. The aggregator-based scripts are kept in the repo for educational reference only.
 
 ### 3. Initialization Scenarios
 
@@ -70,35 +98,43 @@ The improved initialization scripts support multiple scenarios:
 
 ```bash
 # Low utilization (30%) - Conservative
-INIT_SCENARIO=0 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast
+INIT_SCENARIO=0 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast
 
 # Medium utilization (60%) - Balanced (default)
-INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast
+INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast
 
 # High utilization (80%) - Aggressive
-INIT_SCENARIO=2 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast
+INIT_SCENARIO=2 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast
 
 # Custom amounts
-INIT_SCENARIO=3 CUSTOM_SUPPLY_AMOUNT=2000000000000000000000 CUSTOM_COLLATERAL_AMOUNT=1600000000000000000000 CUSTOM_BORROW_AMOUNT=1200000000000000000000 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast
+INIT_SCENARIO=3 CUSTOM_SUPPLY_AMOUNT=2000000000000000000000 CUSTOM_COLLATERAL_AMOUNT=1600000000000000000000 CUSTOM_BORROW_AMOUNT=1200000000000000000000 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast
 ```
 
 ### 4. Market Analysis and Troubleshooting
 
 ```bash
 # Analyze current market state
-forge script script/AnalyzeAndInitialize.s.sol --rpc-url $RPC_URL
+forge script script/AnalyzeAndInitialize.s.sol --rpc-url eden
 
 # Auto-fix detected issues
-AUTO_FIX=true forge script script/AnalyzeAndInitialize.s.sol --rpc-url $RPC_URL --broadcast
+AUTO_FIX=true forge script script/AnalyzeAndInitialize.s.sol --rpc-url eden --broadcast
 
 # Reset market if shares/assets ratio is abnormal
-forge script script/ResetMarket.s.sol --rpc-url $RPC_URL --broadcast
+forge script script/ResetMarket.s.sol --rpc-url eden --broadcast
 ```
 
 ### 5. Update Prices (Optional)
+
+**If using OracleMock:**
 ```bash
-# Update aggregator price to 15000
-PRICE=15000 forge script script/UpdateAggregatorPrice.s.sol --rpc-url $RPC_URL --broadcast
+# Update oracle price to 5000 (50.00 with 2 decimals)
+PRICE=5000 forge script script/UpdateOracleMockPrice.s.sol --rpc-url eden --broadcast
+```
+
+**If using OracleFromAggregator:**
+```bash
+# Update aggregator price to 5000 (50.00 with 2 decimals)
+PRICE=5000 forge script script/UpdateAggregatorPrice.s.sol --rpc-url eden --broadcast
 ```
 
 ## 📋 Environment Variables
@@ -106,8 +142,12 @@ PRICE=15000 forge script script/UpdateAggregatorPrice.s.sol --rpc-url $RPC_URL -
 **REQUIRED** (set manually):
 ```bash
 PRIVATE_KEY=your_private_key_here
-RPC_URL=https://sepolia.infura.io/v3/your_project_id
-ETHERSCAN_API_KEY=your_etherscan_api_key_here
+RPC_URL=https://ev-reth-eden-testnet.binarybuilders.services:8545
+```
+
+**OPTIONAL** (for verification only - not needed for Eden Testnet):
+```bash
+ETHERSCAN_API_KEY=your_etherscan_api_key_here  # Not required for Blockscout
 ```
 
 **AUTO-POPULATED** (via `./update-env-from-artifacts.sh`):
@@ -118,17 +158,21 @@ AGGREGATOR_ADDRESS=# From DeployAggregator.s.sol
 ORACLE_ADDRESS=    # From DeployOracle.s.sol
 ```
 
-**CONSTANTS** (pre-configured for Sepolia):
+**CONSTANTS** (pre-configured for Eden Testnet):
 ```bash
-MORPHO_BLUE_CORE=0xd011EE229E7459ba1ddd22631eF7bF528d424A14
-METAMORPHO_FACTORY=0x98CbFE4053ad6778E0E3435943aC821f565D0b03
-MORPHO_ORACLE_FACTORY=0xa6c843fc53aAf6EF1d173C4710B26419667bF6CD
-IRM_ADDRESS=0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c
-LLTV=860000000000000000
+MORPHO_BLUE_CORE=0xe3F8380851ee3A0BBcedDD0bCDe92d423812C1Cd
+METAMORPHO_FACTORY=0xb007ca4AD41874640F9458bF3B5e427c31Be7766
+IRM_ADDRESS=0x9F16Bf4ef111fC4cE7A75F9aB3a3e20CD9754c92  # IRM Mock (deployed)
+LLTV=800000000000000000
+
+# Note: MORPHO_ORACLE_FACTORY not deployed on Eden (use mock oracles instead)
 ```
 
 **OPTIONAL** (for advanced scripts):
 ```bash
+# Initial oracle price (only for DeployOracleMock.s.sol)
+INITIAL_ORACLE_PRICE=5000  # 50.00 with 2 decimals (default: 5000)
+
 # Initialization scenarios (0=LOW, 1=MEDIUM, 2=HIGH, 3=CUSTOM)
 INIT_SCENARIO=1
 
@@ -140,32 +184,100 @@ CUSTOM_BORROW_AMOUNT=600000000000000000000     # 600 tokens
 # Auto-fix flag for AnalyzeAndInitialize.s.sol
 AUTO_FIX=false
 
-# Price for UpdateAggregatorPrice.s.sol
+# Price for UpdateOracleMockPrice.s.sol or UpdateAggregatorPrice.s.sol
 PRICE=5000  # 50.00 with 2 decimals
+```
+
+## 🔮 Oracle Options: Which to Choose?
+
+### OracleMock (⭐ Recommended for Testnets)
+**Best for:** EDEN testnet, quick demos, maximum simplicity
+
+✅ **Pros:**
+- Simplest setup (no aggregator needed)
+- Direct price control via `setPrice()`
+- Built into Morpho Blue (no custom contracts)
+- Perfect for testnets without oracle infrastructure
+
+❌ **Cons:**
+- Not Chainlink-compatible
+- Manual price updates only (no automation)
+- Not recommended for production
+
+**Deploy with:**
+```bash
+INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol --rpc-url eden --broadcast
+```
+
+### OracleFromAggregator (Chainlink-Compatible)
+**Best for:** Testing Chainlink integration, production-like setup
+
+✅ **Pros:**
+- Chainlink-compatible interface
+- Staleness checks and validation
+- Can connect to real Chainlink feeds later
+- Better for production testing
+
+❌ **Cons:**
+- Requires aggregator deployment first
+- More complex setup (2 contracts)
+- Custom contract (not built-in)
+
+**Deploy with:**
+```bash
+forge script script/DeployAggregator.s.sol --rpc-url eden --broadcast
+forge script script/DeployOracle.s.sol --rpc-url eden --broadcast
 ```
 
 ## 🔧 Benefits of Forge Scripts
 
 - **Native Forge Integration** - Built-in deployment tracking and gas estimation
-- **Automatic Verification** - Etherscan verification with `--verify` flag
+- **Automatic Verification** - Blockscout verification with `--verify` flag on Eden Testnet
 - **Deployment Artifacts** - JSON outputs with addresses and transaction data
 - **Environment Automation** - Auto-populate addresses with `update-env-from-artifacts.sh`
 - **No Dependencies** - Pure Solidity, no TypeScript/Node.js complications
 
 ## 📋 Contract Verification
 
-### Standard Contracts (Direct Deployment)
+Contract verification is **optional** and only affects block explorer readability. Contracts work perfectly without verification.
+
+### Etherscan (Sepolia)
 Most contracts deploy directly and verify automatically with the `--verify` flag:
 ```bash
-forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
+forge script script/DeployTokens.s.sol --rpc-url eden --broadcast --verify
 ```
+
+**Note:** Requires `ETHERSCAN_API_KEY` in your `.env` file.
+
+### Blockscout (EDEN Testnet & Other Networks)
+Blockscout doesn't require an API key. Either:
+
+**Option 1:** Skip verification (contracts work without it):
+```bash
+forge script script/DeployTokens.s.sol --rpc-url eden --broadcast
+```
+
+**Option 2:** Use Blockscout verifier (no `foundry.toml` changes needed):
+```bash
+forge script script/DeployTokens.s.sol --rpc-url eden --broadcast \
+  --verify --verifier blockscout --verifier-url https://eden-testnet.blockscout.com/api
+```
+
+**Option 3:** Configure Blockscout in `foundry.toml` for easier use:
+```toml
+[etherscan]
+eden = { key = "no-key-required", url = "https://eden-testnet.blockscout.com/api" }
+```
+Then use: `forge script script/DeployTokens.s.sol --rpc-url eden --broadcast --verify`
+
+Many Blockscout explorers auto-verify contracts, making manual verification unnecessary.
 
 ### Factory-Deployed Contracts (MetaMorpho Vaults)
 The `DeployVault.s.sol` script deploys vaults through the MetaMorpho factory, which requires manual verification:
 
 ```bash
 # 1. Deploy the vault (verification will fail, but deployment succeeds)
-forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
+forge script script/DeployVault.s.sol --rpc-url eden --broadcast --verify
 
 # 2. Extract the deployed vault address from the logs
 # Look for: "MetaMorpho vault deployed at: 0x..."
@@ -173,7 +285,7 @@ forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
 # 3. Verify the factory-deployed contract manually
 forge verify-contract <VAULT_ADDRESS> \
   lib/metamorpho-v1.1/src/MetaMorphoV1_1.sol:MetaMorphoV1_1 \
-  --rpc-url $RPC_URL \
+  --rpc-url eden \
   --etherscan-api-key $ETHERSCAN_API_KEY \
   --constructor-args $(cast abi-encode "constructor(address,uint256,address,string,string)" \
     <OWNER_ADDRESS> \
@@ -188,7 +300,7 @@ forge verify-contract <VAULT_ADDRESS> \
 # Example for vault deployed at 0x0717BC7BF201bA2d6B07B6F0A3F703b9d1A97C32
 forge verify-contract 0x0717BC7BF201bA2d6B07B6F0A3F703b9d1A97C32 \
   lib/metamorpho-v1.1/src/MetaMorphoV1_1.sol:MetaMorphoV1_1 \
-  --rpc-url $RPC_URL \
+  --rpc-url eden \
   --etherscan-api-key $ETHERSCAN_API_KEY \
   --constructor-args $(cast abi-encode "constructor(address,uint256,address,string,string)" \
     0x2f63f292C01A179E06f5275Cfe3278C1Efa7A1A2 \
@@ -218,7 +330,7 @@ forge flatten lib/metamorpho-v1.1/src/MetaMorphoV1_1.sol > MetaMorphoV1_1_flatte
 # Method 2: Direct verification (may fail due to complex dependencies)
 forge verify-contract $VAULT_ADDRESS \
   lib/metamorpho-v1.1/src/MetaMorphoV1_1.sol:MetaMorphoV1_1 \
-  --rpc-url $RPC_URL \
+  --rpc-url eden \
   --etherscan-api-key $ETHERSCAN_API_KEY
 ```
 
@@ -246,19 +358,31 @@ These artifacts can be parsed by other tools for address book updates.
 **Solution**:
 ```bash
 # 1. Analyze the market
-forge script script/AnalyzeAndInitialize.s.sol --rpc-url $RPC_URL
+forge script script/AnalyzeAndInitialize.s.sol --rpc-url eden
 
 # 2. If abnormal ratio detected, reset and reinitialize
-forge script script/ResetMarket.s.sol --rpc-url $RPC_URL --broadcast
-INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast
+forge script script/ResetMarket.s.sol --rpc-url eden --broadcast
+INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast
 ```
 
 ### Problem: "Insufficient token balance" errors
 
-**Solution**:
+**Cause**: Fresh deployments start with 0 token balance.
+
+**Solution**: Run the MintTokens script before initialization:
 ```bash
-# Mint more tokens
-forge script script/MintTokens.s.sol --rpc-url $RPC_URL --broadcast
+forge script script/MintTokens.s.sol --rpc-url eden --broadcast
+```
+
+This mints **2000 fakeUSD + 1500 fakeTIA**, which covers all initialization scenarios:
+- **Low (30%)**: ~1,300 fakeUSD + 400 fakeTIA ✅
+- **Medium (60%)**: ~1,600 fakeUSD + 800 fakeTIA ✅
+- **High (80%)**: ~1,900 fakeUSD + 1,200 fakeTIA ✅
+
+**If you need more tokens later** (for testing or additional operations):
+```bash
+forge script script/MintTokens.s.sol --rpc-url eden --broadcast
+# Can be called multiple times to mint additional tokens
 ```
 
 ### Problem: Oracle price is stale
@@ -266,7 +390,7 @@ forge script script/MintTokens.s.sol --rpc-url $RPC_URL --broadcast
 **Solution**:
 ```bash
 # Update oracle price
-PRICE=5000 forge script script/UpdateAggregatorPrice.s.sol --rpc-url $RPC_URL --broadcast
+PRICE=5000 forge script script/UpdateAggregatorPrice.s.sol --rpc-url eden --broadcast
 ```
 
 ### Problem: Want to test different utilization scenarios
@@ -274,9 +398,9 @@ PRICE=5000 forge script script/UpdateAggregatorPrice.s.sol --rpc-url $RPC_URL --
 **Solution**:
 ```bash
 # Try different scenarios
-INIT_SCENARIO=0 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast  # 30%
-INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast  # 60%  
-INIT_SCENARIO=2 forge script script/InitializeUtilizationImproved.s.sol --rpc-url $RPC_URL --broadcast  # 80%
+INIT_SCENARIO=0 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast  # 30%
+INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast  # 60%  
+INIT_SCENARIO=2 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast  # 80%
 ```
 
 ### Problem: Market analysis shows "MARKET_HEALTHY" but frontend still has issues

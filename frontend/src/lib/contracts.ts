@@ -1,7 +1,35 @@
-// Contract addresses and configuration loaded from Forge deployment artifacts
-// This replaces the old manual config/addresses.ts system
+/**
+ * Contract Addresses and Configuration
+ * 
+ * This module serves as the single source of truth for all contract addresses:
+ * - Deployed contracts: Loaded from Forge deployment artifacts
+ * - Morpho protocol: Read from environment variables (see frontend/env.example)
+ * - Market params: Computed from deployed contracts
+ * 
+ * Environment variables override defaults for Morpho addresses, allowing
+ * easy switching between networks or testnet resets.
+ */
 
 import { MarketParams } from '@morpho-org/blue-sdk';
+
+// Morpho Protocol Addresses from Environment
+// These can be overridden in .env.local (see frontend/env.example)
+const MORPHO_ADDRESSES = {
+  morphoBlueCore: (process.env.NEXT_PUBLIC_MORPHO_BLUE_CORE || '0xe3F8380851ee3A0BBcedDD0bCDe92d423812C1Cd') as `0x${string}`,
+  metaMorphoFactory: (process.env.NEXT_PUBLIC_METAMORPHO_FACTORY || '0xb007ca4AD41874640F9458bF3B5e427c31Be7766') as `0x${string}`,
+  irmMock: (process.env.NEXT_PUBLIC_IRM_MOCK || '0x9F16Bf4ef111fC4cE7A75F9aB3a3e20CD9754c92') as `0x${string}`,
+};
+
+// Environment Variable Overrides for Deployed Contracts
+// If set, these override the Forge artifact addresses
+const ENV_OVERRIDES = {
+  loanToken: process.env.NEXT_PUBLIC_LOAN_TOKEN as `0x${string}` | undefined,
+  collateralToken: process.env.NEXT_PUBLIC_COLLATERAL_TOKEN as `0x${string}` | undefined,
+  aggregator: process.env.NEXT_PUBLIC_AGGREGATOR_ADDRESS as `0x${string}` | undefined,
+  oracle: process.env.NEXT_PUBLIC_ORACLE_ADDRESS as `0x${string}` | undefined,
+  vault: process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}` | undefined,
+  marketId: process.env.NEXT_PUBLIC_MARKET_ID as `0x${string}` | undefined,
+};
 
 // Types for Forge deployment artifacts
 interface DeploymentTransaction {
@@ -24,42 +52,52 @@ interface DeploymentArtifact {
 // Import deployment artifacts directly from Forge broadcast directory
 // These imports will fail gracefully if artifacts don't exist
 let deployTokensArtifact: DeploymentArtifact | null = null;
-let deployAggregatorArtifact: DeploymentArtifact | null = null;
-let deployOracleArtifact: DeploymentArtifact | null = null;
+let deployOracleMockArtifact: DeploymentArtifact | null = null;
+let deployAggregatorArtifact: DeploymentArtifact | null = null; // Optional - for Chainlink-compatible approach
+let deployOracleArtifact: DeploymentArtifact | null = null; // Optional - for Chainlink-compatible approach
 let createMarketArtifact: DeploymentArtifact | null = null;
 let deployVaultArtifact: DeploymentArtifact | null = null;
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployTokensArtifact = require('../../../contracts/broadcast/DeployTokens.s.sol/11155111/run-latest.json');
+  deployTokensArtifact = require('../../../contracts/broadcast/DeployTokens.s.sol/3735928814/run-latest.json');
 } catch {
   console.warn('⚠️ DeployTokens artifact not found - tokens will not be available');
 }
 
+// Try OracleMock first (Eden approach - default)
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployAggregatorArtifact = require('../../../contracts/broadcast/DeployAggregator.s.sol/11155111/run-latest.json');
+  deployOracleMockArtifact = require('../../../contracts/broadcast/DeployOracleMock.s.sol/3735928814/run-latest.json');
 } catch {
-  console.warn('⚠️ DeployAggregator artifact not found - aggregator will not be available');
+  console.warn('ℹ️ DeployOracleMock artifact not found - trying Chainlink-compatible approach');
+}
+
+// Optional: Try aggregator + oracle (Chainlink-compatible approach - fallback)
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  deployAggregatorArtifact = require('../../../contracts/broadcast/DeployAggregator.s.sol/3735928814/run-latest.json');
+} catch {
+  // Silently fail - aggregator is optional
 }
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployOracleArtifact = require('../../../contracts/broadcast/DeployOracle.s.sol/11155111/run-latest.json');
+  deployOracleArtifact = require('../../../contracts/broadcast/DeployOracle.s.sol/3735928814/run-latest.json');
 } catch {
-  console.warn('⚠️ DeployOracle artifact not found - oracle will not be available');
+  // Silently fail - oracle is optional
 }
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  createMarketArtifact = require('../../../contracts/broadcast/CreateMarket.s.sol/11155111/run-latest.json');
+  createMarketArtifact = require('../../../contracts/broadcast/CreateMarket.s.sol/3735928814/run-latest.json');
 } catch {
   console.warn('⚠️ CreateMarket artifact not found - market will not be available');
 }
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployVaultArtifact = require('../../../contracts/broadcast/DeployVault.s.sol/11155111/run-latest.json');
+  deployVaultArtifact = require('../../../contracts/broadcast/DeployVault.s.sol/3735928814/run-latest.json');
 } catch {
   console.warn('⚠️ DeployVault artifact not found - vault will not be available');
 }
@@ -103,43 +141,69 @@ class ContractAddressManager {
 
   get fakeUSD(): string | null {
     if (!this._addresses.fakeUSD) {
-      this._addresses.fakeUSD = this.getContractAddress(deployTokensArtifact, 'FaucetERC20');
+      // Check environment variable override first
+      if (ENV_OVERRIDES.loanToken) {
+        this._addresses.fakeUSD = ENV_OVERRIDES.loanToken;
+      } else {
+        this._addresses.fakeUSD = this.getContractAddress(deployTokensArtifact, 'FaucetERC20');
+      }
     }
     return this._addresses.fakeUSD;
   }
 
   get fakeTIA(): string | null {
     if (!this._addresses.fakeTIA) {
-      if (!deployTokensArtifact) {
-        console.warn('⚠️ DeployTokens artifact not available for fakeTIA');
-        return null;
+      // Check environment variable override first
+      if (ENV_OVERRIDES.collateralToken) {
+        this._addresses.fakeTIA = ENV_OVERRIDES.collateralToken;
+      } else {
+        if (!deployTokensArtifact) {
+          console.warn('⚠️ DeployTokens artifact not available for fakeTIA');
+          return null;
+        }
+        
+        const faucetDeployments = deployTokensArtifact.transactions.filter((tx: DeploymentTransaction) =>
+          tx.contractName === 'FaucetERC20' && tx.transactionType === 'CREATE'
+        );
+        if (faucetDeployments.length < 2) {
+          console.warn('⚠️ fakeTIA deployment not found - need at least 2 FaucetERC20 deployments');
+          return null;
+        }
+        this._addresses.fakeTIA = faucetDeployments[1].contractAddress;
       }
-      
-      const faucetDeployments = deployTokensArtifact.transactions.filter((tx: DeploymentTransaction) =>
-        tx.contractName === 'FaucetERC20' && tx.transactionType === 'CREATE'
-      );
-      if (faucetDeployments.length < 2) {
-        console.warn('⚠️ fakeTIA deployment not found - need at least 2 FaucetERC20 deployments');
-        return null;
-      }
-      this._addresses.fakeTIA = faucetDeployments[1].contractAddress;
     }
     return this._addresses.fakeTIA;
   }
 
   get aggregator(): string | null {
     if (!this._addresses.aggregator) {
-      this._addresses.aggregator = this.getContractAddress(deployAggregatorArtifact, 'SettableAggregator');
+      // Check environment variable override first
+      if (ENV_OVERRIDES.aggregator) {
+        this._addresses.aggregator = ENV_OVERRIDES.aggregator;
+      } else {
+        this._addresses.aggregator = this.getContractAddress(deployAggregatorArtifact, 'SettableAggregator');
+      }
     }
     return this._addresses.aggregator;
   }
 
-  get oracle(): string | null {
-    if (!this._addresses.oracle) {
-      this._addresses.oracle = this.getContractAddress(deployOracleArtifact, 'OracleFromAggregator');
-    }
-    return this._addresses.oracle;
-  }
+      get oracle(): string | null {
+        if (!this._addresses.oracle) {
+          // Check environment variable override first
+          if (ENV_OVERRIDES.oracle) {
+            this._addresses.oracle = ENV_OVERRIDES.oracle;
+          } else {
+            // Try OracleMock first (Eden/testnet approach - default)
+            this._addresses.oracle = this.getContractAddress(deployOracleMockArtifact, 'OracleMock');
+            
+            // Fallback to OracleFromAggregator (Chainlink-compatible approach)
+            if (!this._addresses.oracle) {
+              this._addresses.oracle = this.getContractAddress(deployOracleArtifact, 'OracleFromAggregator');
+            }
+          }
+        }
+        return this._addresses.oracle;
+      }
 
   get marketParams(): MarketParams | null {
     if (!this._addresses.marketParams) {
@@ -156,51 +220,60 @@ class ContractAddressManager {
         loanToken: fakeUSD as `0x${string}`,
         collateralToken: fakeTIA as `0x${string}`,
         oracle: oracle as `0x${string}`,
-        irm: '0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c' as `0x${string}`, // Adaptive Curve IRM (Sepolia)
-        lltv: BigInt('860000000000000000'), // 86% LLTV
+        irm: MORPHO_ADDRESSES.irmMock,
+            lltv: BigInt(process.env.NEXT_PUBLIC_LLTV || '800000000000000000'),
       });
     }
     return this._addresses.marketParams;
   }
 
   get marketId(): string | null {
+    // Check environment variable override first
+    if (ENV_OVERRIDES.marketId) {
+      return ENV_OVERRIDES.marketId;
+    }
     const params = this.marketParams;
     return params ? params.id : null;
   }
 
   get vault(): string | null {
     if (!this._addresses.vault) {
-      // Extract vault address from deployment artifacts (factory-deployed via CREATE2)
-      if (deployVaultArtifact) {
-        // Look for MetaMorpho factory call transaction
-        const factoryTransaction = deployVaultArtifact.transactions.find((tx: DeploymentTransaction) => 
-          tx.transactionType === 'CALL' && tx.function && tx.function.includes('createMetaMorpho')
-        );
-        
-        if (factoryTransaction && factoryTransaction.additionalContracts) {
-          // Find the CREATE2 deployment in additionalContracts
-          const additionalContracts = factoryTransaction.additionalContracts as Array<{
-            transactionType: string;
-            address: string;
-          }>;
-          
-          const vaultContract = additionalContracts.find(contract => 
-            contract.transactionType === 'CREATE2'
+      // Check environment variable override first
+      if (ENV_OVERRIDES.vault) {
+        this._addresses.vault = ENV_OVERRIDES.vault;
+      } else {
+        // Extract vault address from deployment artifacts (factory-deployed via CREATE2)
+        if (deployVaultArtifact) {
+          // Look for MetaMorpho factory call transaction
+          const factoryTransaction = deployVaultArtifact.transactions.find((tx: DeploymentTransaction) => 
+            tx.transactionType === 'CALL' && tx.function && tx.function.includes('createMetaMorpho')
           );
           
-          if (vaultContract) {
-            this._addresses.vault = vaultContract.address;
+          if (factoryTransaction && factoryTransaction.additionalContracts) {
+            // Find the CREATE2 deployment in additionalContracts
+            const additionalContracts = factoryTransaction.additionalContracts as Array<{
+              transactionType: string;
+              address: string;
+            }>;
+            
+            const vaultContract = additionalContracts.find(contract => 
+              contract.transactionType === 'CREATE2'
+            );
+            
+            if (vaultContract) {
+              this._addresses.vault = vaultContract.address;
+            } else {
+              console.warn('⚠️ Vault CREATE2 deployment not found in additionalContracts');
+              this._addresses.vault = null;
+            }
           } else {
-            console.warn('⚠️ Vault CREATE2 deployment not found in additionalContracts');
+            console.warn('⚠️ MetaMorpho factory transaction not found in deployment artifacts');
             this._addresses.vault = null;
           }
         } else {
-          console.warn('⚠️ MetaMorpho factory transaction not found in deployment artifacts');
+          console.warn('⚠️ DeployVault artifact not available');
           this._addresses.vault = null;
         }
-      } else {
-        console.warn('⚠️ DeployVault artifact not available');
-        this._addresses.vault = null;
       }
     }
     return this._addresses.vault;
@@ -228,29 +301,25 @@ export const contracts = {
   },
 
   // Oracle infrastructure
+  // Defaults to OracleMock (Eden/testnet approach)
+  // Falls back to Aggregator + OracleFromAggregator (Chainlink-compatible approach)
   oracles: {
+    oracle: addressManager.oracle, // OracleMock or OracleFromAggregator
     aggregator: {
       pair: 'fakeTIA/fakeUSD',
-      address: addressManager.aggregator,
+      address: addressManager.aggregator, // Optional - only for Chainlink-compatible approach
     },
-    builtOracle: addressManager.oracle,
   },
 
-  // Morpho Blue addresses (Sepolia - these are constants)
-  morpho: {
-    metaMorphoFactory: '0x98CbFE4053ad6778E0E3435943aC821f565D0b03' as `0x${string}`,
-    morphoBlueCore: '0xd011EE229E7459ba1ddd22631eF7bF528d424A14' as `0x${string}`,
-    oracleV2Factory: '0xa6c843fc53aAf6EF1d173C4710B26419667bF6CD' as `0x${string}`,
-    publicAllocator: '0xfd32fA2ca22c76dD6E550706Ad913FC6CE91c75D' as `0x${string}`,
-    adaptiveCurveIRM: '0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c' as `0x${string}`,
-  },
+  // Morpho Blue addresses (from environment variables)
+  morpho: MORPHO_ADDRESSES,
 
   // Market configuration using centralized manager
   markets: {
     sandbox: {
       id: getMarketId(),
-      irm: '0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c' as `0x${string}`,
-      lltv: '860000000000000000', // 86% LLTV (18 decimals)
+      irm: MORPHO_ADDRESSES.irmMock,
+          lltv: process.env.NEXT_PUBLIC_LLTV || '800000000000000000',
       loanToken: addressManager.fakeUSD,
       collateralToken: addressManager.fakeTIA,
       oracle: addressManager.oracle,
@@ -279,25 +348,32 @@ export const {
 
 // Deployment metadata
 export const deploymentInfo = {
-  network: 'sepolia',
-  chainId: 11155111,
+  network: process.env.NEXT_PUBLIC_CHAIN_NAME?.toLowerCase().replace(/\s+/g, '-') || 'eden-testnet',
+  chainId: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '3735928814'),
   deployer: '0x2f63f292C01A179E06f5275Cfe3278C1Efa7A1A2',
   deploymentDate: new Date().toISOString(),
   
-  // Transaction hashes from deployment
+  // Transaction hashes from deployment (only include artifacts that exist)
   transactions: {
-    deployTokens: (deployTokensArtifact as DeploymentArtifact).transactions.map((tx: DeploymentTransaction) => tx.hash),
-    deployAggregator: (deployAggregatorArtifact as DeploymentArtifact).transactions.map((tx: DeploymentTransaction) => tx.hash),
-    deployOracle: (deployOracleArtifact as DeploymentArtifact).transactions.map((tx: DeploymentTransaction) => tx.hash),
-    createMarket: (createMarketArtifact as DeploymentArtifact).transactions.map((tx: DeploymentTransaction) => tx.hash),
+    deployTokens: deployTokensArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
+    deployOracleMock: deployOracleMockArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
+    // Optional: Chainlink-compatible approach
+    deployAggregator: deployAggregatorArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
+    deployOracle: deployOracleArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
+    createMarket: createMarketArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
+    deployVault: deployVaultArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
   },
 };
 
-// Helper function to get Etherscan URLs
+// Helper function to get block explorer URLs
+// Reads from environment variable, allowing easy network switching
 export function getEtherscanUrl(address: string, type: 'address' | 'tx' = 'address'): string {
-  const baseUrl = 'https://sepolia.etherscan.io';
+  const baseUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || 'https://explorer-eden-testnet.binarybuilders.services';
   return `${baseUrl}/${type}/${address}`;
 }
+
+// Alias for better clarity (keeping getEtherscanUrl for backward compatibility)
+export const getExplorerUrl = getEtherscanUrl;
 
 // Validation function to ensure all addresses are valid
 export function validateContracts(): boolean {

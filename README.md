@@ -1,6 +1,51 @@
-# Morpho Vaults v1.1 Demo (Sepolia)
+# Morpho Vaults v1.1 Demo (Eden Testnet)
 
-A comprehensive demonstration of building yield-bearing products using **Morpho Vaults v1.1** as the yield engine on **Sepolia** testnet. This repository includes both smart contracts and a frontend application to showcase how to integrate with Morpho's infrastructure.
+**Powered by Celestia Eden**
+
+A comprehensive demonstration of building yield-bearing products using **Morpho Vaults v1.1** as the yield engine on **Eden Testnet**. This repository includes both smart contracts and a frontend application to showcase how to integrate with Morpho's infrastructure.
+
+## 🌐 Network Support
+
+This project is configured for **Eden Testnet** (Powered by Celestia). 
+
+**Using Named RPC Endpoints**: We use Foundry's named RPC endpoints defined in `contracts/foundry.toml`:
+```bash
+# Instead of: --rpc-url $RPC_URL
+# We use: --rpc-url eden
+```
+
+This is cleaner and avoids redundancy since the endpoint is already configured in `foundry.toml` and `.env`.
+
+**Redeploying on Sepolia**: Thanks to centralized configuration, switching networks is simple:
+
+1. **Update `contracts/foundry.toml`**:
+   ```toml
+   [rpc_endpoints]
+   sepolia = "https://sepolia.infura.io/v3/your_project_id"
+   ```
+
+2. **Update `contracts/.env`**:
+   ```bash
+   RPC_URL=https://sepolia.infura.io/v3/your_project_id
+   MORPHO_BLUE_CORE=0xd011EE229E7459ba1ddd22631eF7bF528d424A14
+   METAMORPHO_FACTORY=0x98CbFE4053ad6778E0E3435943aC821f565D0b03
+   IRM_ADDRESS=0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c
+   ```
+
+3. **Update `frontend/.env.local`**:
+   ```bash
+   NEXT_PUBLIC_CHAIN_ID=11155111
+   NEXT_PUBLIC_CHAIN_NAME="Sepolia"
+   NEXT_PUBLIC_MORPHO_BLUE_CORE=0xd011EE229E7459ba1ddd22631eF7bF528d424A14
+   NEXT_PUBLIC_METAMORPHO_FACTORY=0x98CbFE4053ad6778E0E3435943aC821f565D0b03
+   NEXT_PUBLIC_IRM_MOCK=0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c
+   NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
+   ```
+
+4. **Update artifact paths in `contracts.ts`**: Change `/3735928814/` to `/11155111/`
+5. **Use named endpoint**: `--rpc-url sepolia` instead of `--rpc-url eden`
+
+That's it! No code changes needed thanks to environment-driven configuration.
 
 ## 🚀 Quick Start
 
@@ -9,29 +54,63 @@ A comprehensive demonstration of building yield-bearing products using **Morpho 
 - Node.js 20.x (see `.nvmrc`)
 - npm
 - Foundry (for smart contracts)
-- Sepolia testnet ETH
+- Eden Testnet TIA ([Get from faucet](https://faucet-eden-testnet.binarybuilders.services))
 
 ### Environment Setup
+
+#### Configuration Architecture
+
+This project uses a **centralized configuration** approach:
+
+**Contracts** (`contracts/.env`):
+- Deploy-time configuration (RPC, private key, Morpho addresses)
+- Updated by Forge broadcast artifacts automatically
+
+**Frontend** (`frontend/.env.local`):
+- **Chain configuration**: Single source in `src/lib/wagmi.ts`
+- **Morpho addresses**: Environment variables in `src/lib/contracts.ts`
+- **Deployed contracts**: Auto-loaded from Forge artifacts
+
+This eliminates duplication and makes network switching simple!
+
+#### Setup Steps
 
 1. **Forge Scripts** (for contract deployment):
    ```bash
    cd contracts
    cp env.example .env
-   # Edit .env with your RPC_URL, PRIVATE_KEY, and ETHERSCAN_API_KEY
+   # Edit .env with your RPC_URL and PRIVATE_KEY
+   # Note: ETHERSCAN_API_KEY not required for Blockscout verification
    forge install
    ```
-
-RPC_URL will be where we send transactions when deploying our contracts. It can be obtained from TODO: TBD Eden provider. TODO: edit to not require ETHERSCAN_API_KEY.
+   
+   **RPC Configuration**: The default RPC URL is `https://ev-reth-eden-testnet.binarybuilders.services:8545`. You can use this public endpoint or obtain a dedicated RPC from an Eden provider. The `ETHERSCAN_API_KEY` is optional and not required for Blockscout verification on Eden Testnet.
 
 2. **Frontend** (for the demo UI):
    ```bash
    cd frontend
-   cp .env.local.example .env.local
-   # Edit .env.local with optional custom RPC URL
+   cp env.example .env.local
+   # Edit .env.local to customize network settings (optional)
+   # Default values work for Eden Testnet out of the box
    npm install
    ```
-
-<!--TODO: .env.local.example doesn't exist, make the example file-->
+   
+   **Note**: Frontend configuration is centralized and flexible:
+   - **Chain config**: `src/lib/wagmi.ts` (single source of truth)
+   - **Morpho addresses**: Environment variables with defaults
+   - **Deployed contracts**: Auto-loaded from Forge artifacts, override with env vars
+   - See `frontend/env.example` for all available configuration options
+   
+   **Default behavior**: Contracts auto-load from `contracts/broadcast/` artifacts
+   
+   **Override deployed contracts** (optional): Set these in `.env.local`:
+   ```bash
+   NEXT_PUBLIC_LOAN_TOKEN=0x...
+   NEXT_PUBLIC_COLLATERAL_TOKEN=0x...
+   NEXT_PUBLIC_ORACLE_ADDRESS=0x...
+   NEXT_PUBLIC_VAULT_ADDRESS=0x...
+   NEXT_PUBLIC_MARKET_ID=0x...
+   ```
 
 ### Running the Demo
 
@@ -40,23 +119,46 @@ RPC_URL will be where we send transactions when deploying our contracts. It can 
    cd contracts
    git submodule update --init --recursive
    source .env
+   
    # Deploy all contracts in sequence with automatic verification
-   forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
-   ./update-env-from-artifacts.sh  # Auto-populate addresses
+   # Note: Using 'eden' RPC endpoint defined in foundry.toml
+   # Eden uses OracleMock (no Chainlink support)
+   
+   forge script script/DeployTokens.s.sol \
+     --rpc-url eden \
+     --broadcast \
+     --verify \
+     --verifier blockscout \
+     --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
+   ./update-env-from-artifacts.sh
 
-   forge script script/DeployAggregator.s.sol --rpc-url $RPC_URL --broadcast --verify
-   ./update-env-from-artifacts.sh  # Auto-populate addresses
+   INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol \
+     --rpc-url eden \
+     --broadcast \
+     --verify \
+     --verifier blockscout \
+     --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
+   ./update-env-from-artifacts.sh
 
-   forge script script/DeployOracle.s.sol --rpc-url $RPC_URL --broadcast --verify
-   ./update-env-from-artifacts.sh  # Auto-populate addresses
+   forge script script/CreateMarket.s.sol \
+     --rpc-url eden \
+     --broadcast
 
-   forge script script/CreateMarket.s.sol --rpc-url $RPC_URL --broadcast --verify
+   forge script script/DeployVault.s.sol \
+     --rpc-url eden \
+     --broadcast
 
-   forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
-
-   forge script script/MintTokens.s.sol --rpc-url $RPC_URL --verify --broadcast
-   forge script script/InitializeUtilization.s.sol --rpc-url $RPC_URL --verify --broadcast
+   # Mint tokens (fresh deployments have 0 balance)
+   forge script script/MintTokens.s.sol --rpc-url eden --broadcast
+     
+   forge script script/InitializeUtilization.s.sol \
+     --rpc-url eden \
+     --broadcast
    ```
+   
+   **Note**: Fresh deployments start with 0 token balance. MintTokens gives 2000 fakeUSD + 1500 fakeTIA, covering all initialization scenarios.
+   
+   See `contracts/README-SCRIPTS.md` for detailed explanations and alternative initialization options.
 
 2. **Start Frontend**:
    ```bash
@@ -69,12 +171,10 @@ RPC_URL will be where we send transactions when deploying our contracts. It can 
 
 3. **Access Demo**:
    - Open http://localhost:3000
-   - Connect your wallet (Sepolia testnet)
+   - Connect your wallet (Eden Testnet - chain ID 3735928814)
    - Visit `/setup` to interact with the sandbox. Set a supply cap and "Submit Cap" and "Accept Cap". Then Add Market to Supply Queue, click to enable deposits.
    - Use same account to set oracle as deploying vaults.
    - Visit `/vaults` to interact with the MetaMorpho vault
-
----
 
 ## 📋 Milestone M0: "Setting the Stage"
 
@@ -105,10 +205,10 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 - **TokenFaucetCard**: Token selection, balance display, minting with cooldown tracking
 - **OracleCard**: Current price display, custom price setting, preset adjustments (+/-5%, +/-20%, crash/recovery)
 - **SandboxMarketCard**: Market configuration display, creation status, utilization initialization
-- **Web3 Integration**: Wagmi + Viem setup with Sepolia testnet support
+- **Web3 Integration**: Wagmi + Viem setup with Eden Testnet support
 
 #### 4. Infrastructure
-- **Address Book**: Typed configuration with Morpho Sepolia addresses from official docs
+- **Address Book**: Typed configuration with Morpho Eden Testnet addresses from official docs
 - **Environment Templates**: `.env.example` files for both ops and frontend
 - **Navigation**: Clean UI with wallet connection and page routing
 - **Error Handling**: Toast notifications and transaction status tracking
@@ -155,7 +255,7 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 ### Smart Contracts
 - **Foundry**: Solidity development environment
 - **OpenZeppelin**: Battle-tested contract libraries
-- **Morpho Blue v1.1**: Core lending protocol on Sepolia
+- **Morpho Blue v1.1**: Core lending protocol on Eden Testnet
 
 ### Frontend
 - **Next.js 15**: React framework with App Router
@@ -172,15 +272,15 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 
 ## 📖 Morpho Integration
 
-This demo integrates with Morpho's infrastructure on Sepolia:
+This demo integrates with Morpho's infrastructure on Eden Testnet:
 
-- **Morpho Blue Core**: `0xd011EE229E7459ba1ddd22631eF7bF528d424A14`
-- **MetaMorpho Factory v1.1**: `0x98CbFE4053ad6778E0E3435943aC821f565D0b03`
-- **Oracle V2 Factory**: `0xa6c843fc53aAf6EF1d173C4710B26419667bF6CD`
-- **Adaptive Curve IRM**: `0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c`
-- **Public Allocator**: `0xfd32fA2ca22c76dD6E550706Ad913FC6CE91c75D`
+- **Morpho Blue Core**: `0xe3F8380851ee3A0BBcedDD0bCDe92d423812C1Cd`
+- **MetaMorpho Factory v1.1**: `0xb007ca4AD41874640F9458bF3B5e427c31Be7766`
+- **IRM Mock**: `0x9F16Bf4ef111fC4cE7A75F9aB3a3e20CD9754c92`
 
-*Source: [Morpho Addresses](https://docs.morpho.org/get-started/resources/addresses?utm_source=chatgpt.com), [IRM on Sepolia Etherscan](https://sepolia.etherscan.io/address/0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c#code)*
+*Source: [Eden Testnet Documentation](https://docs.celestia.org/eden/testnet) | [View on Blockscout](https://explorer-eden-testnet.binarybuilders.services)*
+
+**Note**: Eden Testnet uses mock contracts for IRM (Interest Rate Model) and oracles for educational purposes. For production deployments, use audited IRM implementations.
 
 ## 🔧 SDK Integration
 
@@ -188,7 +288,7 @@ This project includes comprehensive **Morpho Blue SDK** integration:
 
 ### SDK Validation
 ```bash
-# Test SDK functionality on Sepolia
+# Test SDK functionality (Note: SDK testing script references Sepolia for validation)
 cd ops
 npm run test:morpho-sdk
 ```
@@ -209,7 +309,7 @@ The SDK provides significant advantages over manual RPC calls including type saf
 
 **Status: ✅ COMPLETED**
 
-This milestone implements a complete frontend for interacting with MetaMorpho v1.1 vaults on Sepolia.
+This milestone implements a complete frontend for interacting with MetaMorpho v1.1 vaults on Eden Testnet.
 
 ### ✅ Deliverables Completed
 
@@ -292,7 +392,7 @@ This milestone implements a complete frontend for interacting with MetaMorpho v1
    ```
 
 3. **Configure Vault** (owner-only, required for first use):
-   - Connect wallet to Sepolia testnet (must be the deployer account)
+   - Connect wallet to Eden Testnet (must be the deployer account)
    - Navigate to `/vaults` page
    - **Expand "Vault Administration"** panel (purple header)
    - **Set Supply Cap**: Enter desired cap (e.g., 1000000) and click "Submit Cap" → "Accept Cap"
@@ -442,17 +542,24 @@ cd vaults-example
 # 3. Set up environment
 cd contracts
 cp env.example .env
-# Edit .env with your PRIVATE_KEY, RPC_URL, ETHERSCAN_API_KEY
+# Edit .env with your PRIVATE_KEY and RPC_URL
+# Note: ETHERSCAN_API_KEY is optional for Eden Testnet
 
 cd ../frontend
-cp .env.local.example .env.local
-# Edit .env.local if needed (optional)
+cp env.example .env.local
+# Edit .env.local if needed (optional - defaults work for Eden)
 
 # 4. Deploy your own contracts
 cd ../contracts
-forge script script/DeployTokens.s.sol --rpc-url $RPC_URL --broadcast --verify
+source .env
+forge script script/DeployTokens.s.sol \
+  --rpc-url eden \
+  --broadcast \
+  --verify \
+  --verifier blockscout \
+  --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
 ./update-env-from-artifacts.sh
-# ... continue with all deployment scripts
+# ... continue with all deployment scripts (see contracts/README-SCRIPTS.md)
 
 # 5. Configure your vault via frontend
 cd ../frontend

@@ -2,9 +2,10 @@
 
 ## 📋 Deployment Summary
 
-**Date**: September 19, 2025  
-**Network**: Sepolia Testnet  
-**Deployer**: `0x2f63f292C01A179E06f5275Cfe3278C1Efa7A1A2`
+**Date**: October 9, 2025  
+**Network**: Eden Testnet (Chain ID: 3735928814)  
+**Deployer**: `0x2f63f292C01A179E06f5275Cfe3278C1Efa7A1A2`  
+**Explorer**: https://explorer-eden-testnet.binarybuilders.services
 
 ## 🚀 Deployed Contracts
 
@@ -33,7 +34,7 @@
   - Loan Token: fakeUSD (`0x1b909218c474807550209a7E83875289004Ae969`)
   - Collateral Token: fakeTIA (`0xB4A6E570425295856E688323BEfE9529AAC84688`)
   - Oracle: OracleFromAggregator (`0xBD10202762e1a5A56cec413C59265da14396fa5C`)
-  - IRM: Adaptive Curve IRM (`0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c`)
+  - IRM: IRM Mock (`0x9F16Bf4ef111fC4cE7A75F9aB3a3e20CD9754c92`)
   - LLTV: 86% (860000000000000000)
 
 ## ✅ Market Initialization

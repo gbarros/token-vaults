@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAccount, useBalance, useChainId } from 'wagmi';
 import { formatEther } from 'viem';
-import { sepolia } from 'viem/chains';
+import { edenTestnet } from '@/lib/wagmi';
 
 interface WalletCardProps {
   refreshTrigger: number;
@@ -21,7 +21,7 @@ export default function WalletCard({ refreshTrigger: _refreshTrigger }: WalletCa
     },
   });
 
-  const isCorrectNetwork = chainId === sepolia.id;
+  const isCorrectNetwork = chainId === edenTestnet.id;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -62,12 +62,12 @@ export default function WalletCard({ refreshTrigger: _refreshTrigger }: WalletCa
             <div className="flex items-center space-x-2">
               <div className={`w-3 h-3 rounded-full ${isCorrectNetwork ? 'bg-green-500' : 'bg-red-500'}`} />
               <span className={`text-sm font-medium ${isCorrectNetwork ? 'text-green-700' : 'text-red-700'}`}>
-                {isCorrectNetwork ? 'Sepolia Testnet' : `Wrong Network (Chain ID: ${chainId})`}
+                {isCorrectNetwork ? 'Eden Testnet' : `Wrong Network (Chain ID: ${chainId})`}
               </span>
             </div>
             {!isCorrectNetwork && (
               <p className="text-sm text-red-600 mt-1">
-                Please switch to Sepolia testnet (Chain ID: {sepolia.id}) to continue.
+                Please switch to Eden Testnet (Chain ID: {edenTestnet.id}) to continue.
               </p>
             )}
           </div>
@@ -94,18 +94,18 @@ export default function WalletCard({ refreshTrigger: _refreshTrigger }: WalletCa
             <p className="text-sm text-gray-600 mb-2">Quick Actions:</p>
             <div className="flex flex-wrap gap-2">
               <a
-                href="https://sepoliafaucet.com/"
+                href="https://faucet-eden-testnet.binarybuilders.services"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
               >
-                Get Sepolia ETH
+                Get Eden TIA
                 <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
               </a>
               <a
-                href={`https://sepolia.etherscan.io/address/${address}`}
+                href={`https://explorer-eden-testnet.binarybuilders.services/address/${address}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"

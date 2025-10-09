@@ -69,7 +69,7 @@ export function VaultAllocation() {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">Sandbox Market</h4>
-                    <p className="text-xs text-gray-500">fakeTIA/fakeUSD • 86% LLTV</p>
+                    <p className="text-xs text-gray-500">fakeTIA/fakeUSD • 80% LLTV</p>
                   </div>
                     <div className="text-right">
                       <div className="text-sm font-medium text-gray-900">

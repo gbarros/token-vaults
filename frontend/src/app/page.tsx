@@ -11,7 +11,7 @@ export default function Home() {
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
             A comprehensive demonstration of building yield-bearing products using Morpho Vaults v1.1 
-            as the yield engine on Sepolia testnet.
+            as the yield engine on Eden Testnet.
           </p>
           <div className="flex justify-center space-x-4">
             <Link
@@ -124,7 +124,7 @@ export default function Home() {
                 <li>• Next.js + React</li>
                 <li>• Viem + Wagmi</li>
                 <li>• TypeScript Scripts</li>
-                <li>• Sepolia Testnet</li>
+                <li>• Eden Testnet (Powered by Celestia)</li>
               </ul>
             </div>
           </div>

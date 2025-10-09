@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Morpho Vaults Demo",
-  description: "A demo application showcasing Morpho Vaults v1.1 on Sepolia testnet",
+  description: "A demo application showcasing Morpho Vaults v1.1 on Eden Testnet",
 };
 
 export default function RootLayout({

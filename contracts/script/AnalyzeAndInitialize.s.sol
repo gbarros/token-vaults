@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
-import {IMorphoBase, MarketParams, Market, Position} from "@morpho-blue/interfaces/IMorpho.sol";
+import {IMorpho, MarketParams, Market, Position, Id} from "@morpho-blue/interfaces/IMorpho.sol";
+import {MarketParamsLib} from "@morpho-blue/libraries/MarketParamsLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IIrm} from "@morpho-blue/interfaces/IIrm.sol";
 
@@ -60,8 +61,8 @@ contract AnalyzeAndInitializeScript is Script {
         if (autoFix) {
             _executeRecommendations(morphoBlueCore, marketParams, deployer, deployerPrivateKey, analysis);
         } else {
-            console.log("\n💡 To auto-execute recommendations, set AUTO_FIX=true");
-            console.log("💡 Or run the suggested scripts manually");
+            console.log("\nTIP: To auto-execute recommendations, set AUTO_FIX=true");
+            console.log("TIP: Or run the suggested scripts manually");
         }
         
         console.log("\n=== ANALYSIS COMPLETE ===");
@@ -70,9 +71,10 @@ contract AnalyzeAndInitializeScript is Script {
     function _analyzeMarket(address morphoBlueCore, MarketParams memory marketParams) 
         internal view returns (MarketAnalysis memory analysis) {
         
-        console.log("\n🔍 Analyzing market state...");
+        console.log("\nANALYZING: Analyzing market state...");
         
-        Market memory market = IMorphoBase(morphoBlueCore).market(marketParams);
+        Id marketId = MarketParamsLib.id(marketParams);
+        Market memory market = IMorpho(morphoBlueCore).market(marketId);
         
         // Check if market is empty
         analysis.isEmpty = (market.totalSupplyAssets == 0 && market.totalBorrowAssets == 0);
@@ -115,49 +117,49 @@ contract AnalyzeAndInitializeScript is Script {
     }
     
     function _displayAnalysis(MarketAnalysis memory analysis) internal view {
-        console.log("\n📊 MARKET ANALYSIS RESULTS:");
+        console.log("\nANALYSIS: MARKET ANALYSIS RESULTS:");
         console.log("================================");
         
         if (analysis.isEmpty) {
-            console.log("✅ Market Status: EMPTY - Ready for initialization");
+            console.log("[OK] Market Status: EMPTY - Ready for initialization");
         } else {
-            console.log("📈 Market Status: ACTIVE");
+            console.log("STATUS: Market Status: ACTIVE");
             console.log("   Current Utilization:", analysis.currentUtilization, "%");
             console.log("   Shares/Assets Ratio:", analysis.sharesAssetsRatio / 1e15, "x"); // Display as 1000 = 1.000x
             
             if (analysis.hasAbnormalRatio) {
-                console.log("   ⚠️  ABNORMAL RATIO DETECTED!");
+                console.log("   WARNING:  ABNORMAL RATIO DETECTED!");
                 console.log("   Expected: ~1.000x, Actual:", analysis.sharesAssetsRatio / 1e15, "x");
             } else {
-                console.log("   ✅ Healthy shares/assets ratio");
+                console.log("   [OK] Healthy shares/assets ratio");
             }
             
             if (analysis.estimatedBorrowRate > 0) {
                 console.log("   Estimated Borrow APR:", (analysis.estimatedBorrowRate * 100) / 1e18, "%");
             } else {
-                console.log("   ⚠️  Could not calculate borrow rate");
+                console.log("   WARNING:  Could not calculate borrow rate");
             }
         }
         
-        console.log("\n🎯 RECOMMENDATION:", analysis.recommendation);
+        console.log("\nRECOMMENDATION: RECOMMENDATION:", analysis.recommendation);
         
         // Provide specific guidance
         if (keccak256(bytes(analysis.recommendation)) == keccak256("INITIALIZE_FRESH")) {
-            console.log("   → Run: InitializeUtilizationImproved.s.sol");
-            console.log("   → Suggested scenario: MEDIUM_UTILIZATION");
+            console.log("   -> Run: InitializeUtilizationImproved.s.sol");
+            console.log("   -> Suggested scenario: MEDIUM_UTILIZATION");
         } else if (keccak256(bytes(analysis.recommendation)) == keccak256("RESET_AND_REINITIALIZE")) {
-            console.log("   → Step 1: Run ResetMarket.s.sol");
-            console.log("   → Step 2: Run InitializeUtilizationImproved.s.sol");
-            console.log("   → This will fix the abnormal shares/assets ratio");
+            console.log("   -> Step 1: Run ResetMarket.s.sol");
+            console.log("   -> Step 2: Run InitializeUtilizationImproved.s.sol");
+            console.log("   -> This will fix the abnormal shares/assets ratio");
         } else if (keccak256(bytes(analysis.recommendation)) == keccak256("INCREASE_UTILIZATION")) {
-            console.log("   → Add more borrowing activity");
-            console.log("   → Run TestBorrowing.s.sol or supply more collateral and borrow");
+            console.log("   -> Add more borrowing activity");
+            console.log("   -> Run TestBorrowing.s.sol or supply more collateral and borrow");
         } else if (keccak256(bytes(analysis.recommendation)) == keccak256("DECREASE_UTILIZATION")) {
-            console.log("   → Add more supply or repay some borrows");
-            console.log("   → Market is highly utilized - consider adding liquidity");
+            console.log("   -> Add more supply or repay some borrows");
+            console.log("   -> Market is highly utilized - consider adding liquidity");
         } else {
-            console.log("   → Market is in good condition");
-            console.log("   → No immediate action needed");
+            console.log("   -> Market is in good condition");
+            console.log("   -> No immediate action needed");
         }
     }
     
@@ -168,7 +170,7 @@ contract AnalyzeAndInitializeScript is Script {
         uint256 deployerPrivateKey,
         MarketAnalysis memory analysis
     ) internal {
-        console.log("\n🔧 EXECUTING RECOMMENDATIONS...");
+        console.log("\nEXECUTING: EXECUTING RECOMMENDATIONS...");
         
         if (keccak256(bytes(analysis.recommendation)) == keccak256("INITIALIZE_FRESH")) {
             console.log("Initializing fresh market...");
@@ -205,13 +207,13 @@ contract AnalyzeAndInitializeScript is Script {
         IERC20(marketParams.loanToken).approve(morphoBlueCore, supplyAmount);
         IERC20(marketParams.collateralToken).approve(morphoBlueCore, collateralAmount);
         
-        IMorphoBase(morphoBlueCore).supply(marketParams, supplyAmount, 0, deployer, "");
-        IMorphoBase(morphoBlueCore).supplyCollateral(marketParams, collateralAmount, deployer, "");
-        IMorphoBase(morphoBlueCore).borrow(marketParams, borrowAmount, 0, deployer, deployer);
+        IMorpho(morphoBlueCore).supply(marketParams, supplyAmount, 0, deployer, "");
+        IMorpho(morphoBlueCore).supplyCollateral(marketParams, collateralAmount, deployer, "");
+        IMorpho(morphoBlueCore).borrow(marketParams, borrowAmount, 0, deployer, deployer);
         
         vm.stopBroadcast();
         
-        console.log("✅ Fresh market initialized successfully");
+        console.log("[OK] Fresh market initialized successfully");
     }
     
     function _resetAndReinitialize(
@@ -220,7 +222,7 @@ contract AnalyzeAndInitializeScript is Script {
         address deployer,
         uint256 deployerPrivateKey
     ) internal {
-        console.log("⚠️  Reset and reinitialize requires manual intervention");
+        console.log("WARNING:  Reset and reinitialize requires manual intervention");
         console.log("   Please run ResetMarket.s.sol first, then InitializeUtilizationImproved.s.sol");
         console.log("   This ensures proper cleanup of abnormal market state");
     }
@@ -231,7 +233,8 @@ contract AnalyzeAndInitializeScript is Script {
         address deployer,
         uint256 deployerPrivateKey
     ) internal {
-        Market memory market = IMorphoBase(morphoBlueCore).market(marketParams);
+        Id marketId = MarketParamsLib.id(marketParams);
+        Market memory market = IMorpho(morphoBlueCore).market(marketId);
         
         // Calculate additional borrow needed for 60% utilization
         uint256 targetBorrow = (market.totalSupplyAssets * 60) / 100;
@@ -246,14 +249,14 @@ contract AnalyzeAndInitializeScript is Script {
             vm.startBroadcast(deployerPrivateKey);
             
             IERC20(marketParams.collateralToken).approve(morphoBlueCore, additionalCollateral);
-            IMorphoBase(morphoBlueCore).supplyCollateral(marketParams, additionalCollateral, deployer, "");
-            IMorphoBase(morphoBlueCore).borrow(marketParams, additionalBorrow, 0, deployer, deployer);
+            IMorpho(morphoBlueCore).supplyCollateral(marketParams, additionalCollateral, deployer, "");
+            IMorpho(morphoBlueCore).borrow(marketParams, additionalBorrow, 0, deployer, deployer);
             
             vm.stopBroadcast();
             
-            console.log("✅ Utilization increased successfully");
+            console.log("[OK] Utilization increased successfully");
         } else {
-            console.log("ℹ️  No additional borrowing needed");
+            console.log("INFO:  No additional borrowing needed");
         }
     }
 }
