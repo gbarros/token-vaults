@@ -13,7 +13,7 @@ This directory contains Forge scripts that replace the TypeScript ops scripts fo
 
 **Market & Vault:**
 - **`CreateMarket.s.sol`** - Create Morpho Blue sandbox market
-- **`DeployVault.s.sol`** - Deploy MetaMorpho v1.1 vault with role setup
+- **`DeployVault.s.sol`** - Deploy MetaMorpho v1.1 vault with role setup and auto-configure market (submitCap + acceptCap)
 - **`InitializeUtilization.s.sol`** - Initialize market with liquidity and borrowing (basic)
 
 ### Improved Initialization Scripts
@@ -23,6 +23,8 @@ This directory contains Forge scripts that replace the TypeScript ops scripts fo
 
 ### Utility Scripts
 - **`MintTokens.s.sol`** - Mint tokens (2000 fakeUSD + 1500 fakeTIA) - **Required before initialization**
+- **`SetSupplyQueue.s.sol`** - Set supply queue for vault (use if vault cannot accept deposits)
+- **`AcceptCap.s.sol`** - Accept pending supply cap (use if DeployVault didn't call acceptCap)
 - **`UpdateOracleMockPrice.s.sol`** - Update OracleMock price for testing
 - **`UpdateAggregatorPrice.s.sol`** - Update aggregator price for testing (if using OracleFromAggregator)
 - **`TestBorrowing.s.sol`** - Test borrowing functionality
@@ -55,7 +57,7 @@ forge script script/DeployTokens.s.sol \
   --broadcast \
   --verify \
   --verifier blockscout \
-  --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
+  --verifier-url 'https://eden-testnet.blockscout.com/api/'
 ./update-env-from-artifacts.sh  # Auto-populate LOAN_TOKEN, COLLATERAL_TOKEN
 
 # 2. Deploy OracleMock (simple, no aggregator needed)
@@ -64,13 +66,14 @@ INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol \
   --broadcast \
   --verify \
   --verifier blockscout \
-  --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
+  --verifier-url 'https://eden-testnet.blockscout.com/api/'
 ./update-env-from-artifacts.sh  # Auto-populate ORACLE_ADDRESS
 
 # 3. Create market
 forge script script/CreateMarket.s.sol --rpc-url eden --broadcast
 
-# 4. Deploy MetaMorpho vault
+# 4. Deploy MetaMorpho vault (auto-configures market with supply cap)
+# Note: Script submits AND accepts the cap (timelock=0 for hackathon speed)
 forge script script/DeployVault.s.sol --rpc-url eden --broadcast
 ./update-env-from-artifacts.sh # Auto-populate VAULT_ADDRESS
 
@@ -351,6 +354,25 @@ These artifacts can be parsed by other tools for address book updates.
 
 ## 🔧 Troubleshooting
 
+### Problem: Deposits failing / maxDeposit returns 0
+
+**Cause**: Supply queue is empty. MetaMorpho requires TWO separate steps:
+1. `submitCap` + `acceptCap` - adds to withdraw queue
+2. `setSupplyQueue` - adds to supply queue (**REQUIRED for deposits**)
+
+**Check**:
+```bash
+cast call $VAULT_ADDRESS "supplyQueueLength()(uint256)" --rpc-url eden
+# If returns 0, supply queue is empty
+```
+
+**Solution**: Run SetSupplyQueue script to add market to supply queue:
+```bash
+forge script script/SetSupplyQueue.s.sol --rpc-url eden --broadcast
+```
+
+**Note**: The updated `DeployVault.s.sol` script now automatically sets the supply queue, so this should only be needed for vaults deployed with the old script.
+
 ### Problem: APRs showing 0.00% in frontend
 
 **Cause**: Abnormal shares/assets ratio in the market (e.g., 1,000,000:1 instead of 1:1)
@@ -364,6 +386,17 @@ forge script script/AnalyzeAndInitialize.s.sol --rpc-url eden
 forge script script/ResetMarket.s.sol --rpc-url eden --broadcast
 INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-url eden --broadcast
 ```
+
+### Problem: Vault shows "No Supply Cap"
+
+**Cause**: The supply cap was submitted but not accepted. MetaMorpho requires two steps: `submitCap()` then `acceptCap()`.
+
+**Solution**: Run the AcceptCap script to accept the pending cap:
+```bash
+forge script script/AcceptCap.s.sol --rpc-url eden --broadcast
+```
+
+**Note**: The updated `DeployVault.s.sol` script now automatically accepts the cap, so this should only be needed for vaults deployed with the old script.
 
 ### Problem: "Insufficient token balance" errors
 

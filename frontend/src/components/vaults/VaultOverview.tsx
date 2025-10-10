@@ -2,6 +2,7 @@
 
 import { useVaultData } from '@/hooks/useVaultData';
 import { useSupplyCap } from '@/hooks/useSupplyCap';
+import { useSupplyQueue } from '@/hooks/useSupplyQueue';
 import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { vaults } from '@/lib/contracts';
 import { formatUnits } from 'viem';
@@ -10,6 +11,7 @@ import { AddressLink } from '@/components/ui/AddressLink';
 export function VaultOverview() {
   const { data: vaultData, isLoading, error, isFetching } = useVaultData();
   const { data: supplyCapData, isLoading: supplyCapLoading, isFetching: supplyCapFetching } = useSupplyCap();
+  const { data: supplyQueueLength, isLoading: supplyQueueLoading, isFetching: supplyQueueFetching } = useSupplyQueue();
   const { data: allocationData, isFetching: allocationFetching } = useVaultAllocation();
 
   if (!vaults.metaMorphoDemo.address) {
@@ -26,7 +28,7 @@ export function VaultOverview() {
   }
 
   const isInitialLoading = isLoading;
-  const isAnyFetching = isFetching || supplyCapFetching || allocationFetching;
+  const isAnyFetching = isFetching || supplyCapFetching || supplyQueueFetching || allocationFetching;
 
   if (isInitialLoading) {
     return (
@@ -93,6 +95,18 @@ export function VaultOverview() {
             <span className="text-xs text-gray-600">
               {supplyCapLoading ? 'Loading...' :
                supplyCapData?.supplyCap === BigInt(0) ? 'No Supply Cap' : 'Cap Set'
+              }
+            </span>
+          </div>
+          {/* Supply Queue Status */}
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${
+              supplyQueueLoading ? 'bg-gray-400' :
+              supplyQueueLength === BigInt(0) ? 'bg-red-400' : 'bg-green-400'
+            }`}></div>
+            <span className="text-xs text-gray-600">
+              {supplyQueueLoading ? 'Loading...' :
+               supplyQueueLength === BigInt(0) ? 'Queue Empty' : 'Queue Set'
               }
             </span>
           </div>
@@ -185,6 +199,23 @@ export function VaultOverview() {
                 </span>
               </div>
             )}
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Supply Queue:</span>
+              <span className="text-sm font-medium">
+                {supplyQueueLoading ? (
+                  <span className="text-gray-400">Loading...</span>
+                ) : supplyQueueLength !== undefined ? (
+                  <span className={supplyQueueLength === BigInt(0) ? 'text-red-600' : 'text-green-600'}>
+                    {supplyQueueLength === BigInt(0) 
+                      ? '⚠️ Empty (Deposits Disabled)' 
+                      : `${supplyQueueLength.toString()} market${supplyQueueLength > BigInt(1) ? 's' : ''}`
+                    }
+                  </span>
+                ) : (
+                  <span className="text-red-600">⚠️ Not Configured</span>
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>

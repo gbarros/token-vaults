@@ -368,7 +368,7 @@ export const deploymentInfo = {
 // Helper function to get block explorer URLs
 // Reads from environment variable, allowing easy network switching
 export function getEtherscanUrl(address: string, type: 'address' | 'tx' = 'address'): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || 'https://explorer-eden-testnet.binarybuilders.services';
+  const baseUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || 'https://eden-testnet.blockscout.com';
   return `${baseUrl}/${type}/${address}`;
 }
 
@@ -383,7 +383,7 @@ export function validateContracts(): boolean {
       contracts.tokens.fakeUSD,
       contracts.tokens.fakeTIA,
       contracts.oracles.aggregator.address,
-      contracts.oracles.builtOracle,
+      contracts.oracles.oracle,
       contracts.morpho.morphoBlueCore,
       contracts.markets.sandbox.loanToken,
       contracts.markets.sandbox.collateralToken,

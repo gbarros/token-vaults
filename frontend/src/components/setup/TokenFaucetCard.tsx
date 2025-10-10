@@ -5,92 +5,14 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
 import { contracts } from '../../lib/contracts';
+import { faucetERC20Abi } from '../../lib/abis';
 
-// Minimal ERC20 + Faucet ABI
-const faucetTokenAbi = [
-  {
-    type: 'function',
-    name: 'name',
-    inputs: [],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'symbol',
-    inputs: [],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'decimals',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'totalSupply',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'mint',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'canMint',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'remainingCooldown',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'maxMintPerCall',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-] as const;
+// Use FaucetERC20 ABI from compiled Forge artifacts
+const faucetTokenAbi = faucetERC20Abi;
 
 interface TokenFaucetCardProps {
   onRefresh: () => void;
 }
-
-// Interface for token data (currently unused but may be needed for future features)
-// interface TokenData {
-//   address: string;
-//   name: string;
-//   symbol: string;
-//   balance: bigint;
-//   totalSupply: bigint;
-//   canMint: boolean;
-//   remainingCooldown: number;
-//   maxMintPerCall: bigint;
-// }
 
 export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
   const { address: userAddress, isConnected } = useAccount();

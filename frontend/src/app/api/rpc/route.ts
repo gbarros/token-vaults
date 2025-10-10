@@ -14,14 +14,20 @@ export async function POST(request: NextRequest) {
     // Get the JSON-RPC request body from the browser
     const body = await request.json();
     
-    // Forward the request to Eden RPC
+    // Forward the request to Eden RPC with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    
     const response = await fetch(EDEN_RPC_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
     
     // Get the response
     const data = await response.json();
@@ -30,6 +36,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('RPC Proxy Error:', error);
+    
+    // Handle timeout specifically
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        { 
+          jsonrpc: '2.0', 
+          id: null, 
+          error: { 
+            code: -32603, 
+            message: 'RPC request timeout (5s)' 
+          } 
+        },
+        { status: 504 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         jsonrpc: '2.0', 

@@ -55,50 +55,15 @@ export default function SetupPage() {
           <div className="space-y-8">
             <WalletCard refreshTrigger={refreshTrigger} />
             <TokenFaucetCard onRefresh={handleRefresh} />
+            <OracleCard onRefresh={handleRefresh} />
           </div>
 
           {/* Right Column */}
           <div className="space-y-8">
-            <OracleCard onRefresh={handleRefresh} />
             <SandboxMarketCard onRefresh={handleRefresh} />
           </div>
         </div>
 
-        {/* Deployment Info */}
-        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-medium text-blue-900 mb-4">
-            🎉 Forge Deployment Active
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium text-blue-800">Network:</span>
-              <span className="ml-2 text-blue-700">Eden Testnet</span>
-            </div>
-            <div>
-              <span className="font-medium text-blue-800">Deployment:</span>
-              <span className="ml-2 text-blue-700">Fresh Forge Scripts</span>
-            </div>
-            <div>
-              <span className="font-medium text-blue-800">Oracle Scaling:</span>
-              <span className="ml-2 text-blue-700">36-decimal (Fixed)</span>
-            </div>
-            <div>
-              <span className="font-medium text-blue-800">Market Status:</span>
-              <span className="ml-2 text-blue-700">Initialized & Active</span>
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-blue-600">
-            <p>
-              ✅ All contracts deployed via Forge scripts with proper deployment artifacts
-            </p>
-            <p>
-              ✅ Oracle scaling fixed (36 decimals) - borrowing fully functional
-            </p>
-            <p>
-              ✅ Market initialized with ~61% utilization rate
-            </p>
-          </div>
-        </div>
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">

@@ -5,13 +5,14 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import toast from 'react-hot-toast';
 import { parseEther } from 'viem';
 import { contracts, getMarketParams } from '../../lib/contracts';
-import { useMarketData } from '../../lib/useMarketData';
-import { useMarketInsights } from '../../lib/useMarketInsights';
+import { useMarketMetrics } from '@/hooks/useMarketData';
+import { useMarketDataRaw } from '@/hooks/useMarketDataRaw';
+import { useMarketInsights } from '@/hooks/useMarketInsights';
 import { morphoBlueAbi, erc20Abi } from '../../lib/abis';
 import { marketParamsToAbi } from '../../lib/sdkUtils';
 
 // Helper function to create Blockscout Eden Testnet links
-const getEtherscanLink = (address: string) => `https://explorer-eden-testnet.binarybuilders.services/address/${address}`;
+const getEtherscanLink = (address: string) => `https://eden-testnet.blockscout.com/address/${address}`;
 
 // Component for clickable address links
 const AddressLink = ({ address, label }: { address: string; label?: string }) => (
@@ -52,12 +53,16 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
   });
 
   // Get market data and insights using SDK-powered hooks
-  const marketMetrics = useMarketData();
+  const marketMetrics = useMarketMetrics();
   const marketInsights = useMarketInsights();
+  const { data: marketDataRaw } = useMarketDataRaw();
 
   const marketData = contracts.markets.sandbox;
-  const isMarketCreated = marketData.id && marketData.id !== '';
   const marketParams = getMarketParams();
+  
+  // Check if market actually exists on-chain (not just in config)
+  // A market exists if it has been updated at least once (lastUpdate > 0)
+  const isMarketCreated = marketDataRaw && marketDataRaw[4] > 0n; // marketDataRaw[4] = lastUpdate
 
   const handleCreateMarket = async () => {
     if (!isConnected) {
@@ -269,7 +274,7 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
               <div>
                 <span className="text-gray-600">IRM:</span>
               <div className="mt-1">
-                <AddressLink address={contracts.morpho.adaptiveCurveIRM} label="Adaptive Curve IRM" />
+                <AddressLink address={contracts.morpho.irmMock} label="IRM Mock (Eden)" />
               </div>
             </div>
             <div>
@@ -583,20 +588,29 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
                   <div className="flex items-center">
                     <span className={`font-bold ${
                       marketMetrics.error ? 'text-red-500' : 
-                      marketMetrics.supplyAPR === 'Oracle Stale' ? 'text-orange-600' : 
+                      marketMetrics.supplyAPR === 'Oracle Stale' || marketMetrics.supplyAPR === 'SDK Limitation' ? 'text-orange-600' : 
                       'text-green-700'
                     }`}>
-                      {marketMetrics.error ? 'Error' : `${marketMetrics.supplyAPR}%`}
+                      {marketMetrics.error ? 'Error' : marketMetrics.supplyAPR === 'SDK Limitation' ? 'N/A' : `${marketMetrics.supplyAPR}%`}
                     </span>
-                    {marketMetrics.supplyAPR === 'Oracle Stale' && (
+                    {(marketMetrics.supplyAPR === 'Oracle Stale' || marketMetrics.supplyAPR === 'SDK Limitation') && (
                       <div className="relative ml-1 group">
                         <svg className="w-4 h-4 text-orange-500 cursor-help" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                         </svg>
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                           <div className="text-center">
-                            <div className="font-medium">Oracle Price is Stale</div>
-                            <div className="mt-1">Update the price in the &quot;Oracle Controls&quot; card above</div>
+                            {marketMetrics.supplyAPR === 'Oracle Stale' ? (
+                              <>
+                                <div className="font-medium">Oracle Price is Stale</div>
+                                <div className="mt-1">Update the price in the &quot;Oracle Controls&quot; card above</div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="font-medium">SDK Limitation</div>
+                                <div className="mt-1">Morpho SDK only supports Adaptive Curve IRMs</div>
+                              </>
+                            )}
                           </div>
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                         </div>
@@ -612,20 +626,29 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
                   <div className="flex items-center">
                     <span className={`font-bold ${
                       marketMetrics.error ? 'text-red-500' : 
-                      marketMetrics.borrowAPR === 'Oracle Stale' ? 'text-orange-600' : 
+                      marketMetrics.borrowAPR === 'Oracle Stale' || marketMetrics.borrowAPR === 'SDK Limitation' ? 'text-orange-600' : 
                       'text-red-700'
                     }`}>
-                      {marketMetrics.error ? 'Error' : `${marketMetrics.borrowAPR}%`}
+                      {marketMetrics.error ? 'Error' : marketMetrics.borrowAPR === 'SDK Limitation' ? 'N/A' : `${marketMetrics.borrowAPR}%`}
                     </span>
-                    {marketMetrics.borrowAPR === 'Oracle Stale' && (
+                    {(marketMetrics.borrowAPR === 'Oracle Stale' || marketMetrics.borrowAPR === 'SDK Limitation') && (
                       <div className="relative ml-1 group">
                         <svg className="w-4 h-4 text-orange-500 cursor-help" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                         </svg>
                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                           <div className="text-center">
-                            <div className="font-medium">Oracle Price is Stale</div>
-                            <div className="mt-1">Update the price in the &quot;Oracle Controls&quot; card above</div>
+                            {marketMetrics.borrowAPR === 'Oracle Stale' ? (
+                              <>
+                                <div className="font-medium">Oracle Price is Stale</div>
+                                <div className="mt-1">Update the price in the &quot;Oracle Controls&quot; card above</div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="font-medium">SDK Limitation</div>
+                                <div className="mt-1">Morpho SDK only supports Adaptive Curve IRMs</div>
+                              </>
+                            )}
                           </div>
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                         </div>
@@ -713,6 +736,7 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
             <div className="mt-3 text-xs text-gray-500">
               <p>📈 Optimal Utilization: {marketInsights.optimalUtilization}%</p>
               <p>⏰ Last Update: {marketInsights.lastUpdateTime}</p>
+              <p className="mt-2 text-purple-600">ℹ️ Rate at Target: IRM Mock uses simple utilization-based rates (no target concept like AdaptiveCurveIRM)</p>
               <p className="mt-1 text-blue-600">✨ Powered by Morpho Blue SDK</p>
             </div>
             </div>

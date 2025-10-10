@@ -129,7 +129,7 @@ This eliminates duplication and makes network switching simple!
      --broadcast \
      --verify \
      --verifier blockscout \
-     --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
+     --verifier-url 'https://eden-testnet.blockscout.com/api/'
    ./update-env-from-artifacts.sh
 
    INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol \
@@ -137,19 +137,20 @@ This eliminates duplication and makes network switching simple!
      --broadcast \
      --verify \
      --verifier blockscout \
-     --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
+     --verifier-url 'https://eden-testnet.blockscout.com/api/'
    ./update-env-from-artifacts.sh
 
    forge script script/CreateMarket.s.sol \
      --rpc-url eden \
      --broadcast
 
-   forge script script/DeployVault.s.sol \
-     --rpc-url eden \
-     --broadcast
+       forge script script/DeployVault.s.sol \
+         --rpc-url eden \
+         --broadcast
+       ./update-env-from-artifacts.sh
 
-   # Mint tokens (fresh deployments have 0 balance)
-   forge script script/MintTokens.s.sol --rpc-url eden --broadcast
+       # Mint tokens (fresh deployments have 0 balance)
+       forge script script/MintTokens.s.sol --rpc-url eden --broadcast
      
    forge script script/InitializeUtilization.s.sol \
      --rpc-url eden \
@@ -278,7 +279,7 @@ This demo integrates with Morpho's infrastructure on Eden Testnet:
 - **MetaMorpho Factory v1.1**: `0xb007ca4AD41874640F9458bF3B5e427c31Be7766`
 - **IRM Mock**: `0x9F16Bf4ef111fC4cE7A75F9aB3a3e20CD9754c92`
 
-*Source: [Eden Testnet Documentation](https://docs.celestia.org/eden/testnet) | [View on Blockscout](https://explorer-eden-testnet.binarybuilders.services)*
+*Source: [Eden Testnet Documentation](https://docs.celestia.org/eden/testnet) | [View on Blockscout](https://eden-testnet.blockscout.com)*
 
 **Note**: Eden Testnet uses mock contracts for IRM (Interest Rate Model) and oracles for educational purposes. For production deployments, use audited IRM implementations.
 
@@ -552,14 +553,15 @@ cp env.example .env.local
 # 4. Deploy your own contracts
 cd ../contracts
 source .env
-forge script script/DeployTokens.s.sol \
-  --rpc-url eden \
-  --broadcast \
-  --verify \
-  --verifier blockscout \
-  --verifier-url 'https://explorer-eden-testnet.binarybuilders.services/api/'
-./update-env-from-artifacts.sh
-# ... continue with all deployment scripts (see contracts/README-SCRIPTS.md)
+    forge script script/DeployTokens.s.sol \
+      --rpc-url eden \
+      --broadcast \
+      --verify \
+      --verifier blockscout \
+      --verifier-url 'https://eden-testnet.blockscout.com/api/'
+    ./update-env-from-artifacts.sh
+    # ... continue with DeployOracleMock, CreateMarket, DeployVault, MintTokens, and InitializeUtilization
+    # See contracts/README-SCRIPTS.md for full sequence
 
 # 5. Configure your vault via frontend
 cd ../frontend

@@ -23,6 +23,7 @@ export function useTokenAllowance(tokenAddress: string | null, spenderAddress: s
       return allowance as bigint;
     },
     enabled: !!publicClient && !!tokenAddress && !!spenderAddress && !!address,
-    refetchInterval: 15000, // Refetch every 15 seconds
+    refetchInterval: 10000, // 10s - simple data refresh rate
+    staleTime: 5000, // 5s - consider data fresh
   });
 }

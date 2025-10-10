@@ -105,7 +105,7 @@ export default function WalletCard({ refreshTrigger: _refreshTrigger }: WalletCa
                 </svg>
               </a>
               <a
-                href={`https://explorer-eden-testnet.binarybuilders.services/address/${address}`}
+                href={`https://eden-testnet.blockscout.com/address/${address}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"

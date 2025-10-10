@@ -5,24 +5,10 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { formatUnits, parseUnits } from 'viem';
 import toast from 'react-hot-toast';
 import { contracts } from '../../lib/contracts';
+import OracleMockArtifact from '../../../../contracts/out/OracleMock.sol/OracleMock.json';
 
-// Minimal OracleMock ABI (Morpho Blue - Eden default)
-const oracleMockAbi = [
-  {
-    type: 'function',
-    name: 'price',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'setPrice',
-    inputs: [{ name: 'newPrice', type: 'uint256' }],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const;
+// OracleMock ABI from compiled Forge artifacts
+const oracleMockAbi = OracleMockArtifact.abi;
 
 interface OracleCardProps {
   onRefresh: () => void;
@@ -43,7 +29,7 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
     abi: oracleMockAbi,
     functionName: 'price',
     query: { enabled: !!oracleAddress && isConnected },
-  });
+  }) as { data: bigint | undefined; refetch: () => void };
 
   // Write contract for setting price
   const { writeContract, data: setPriceTxHash, isPending, error: writeError } = useWriteContract();

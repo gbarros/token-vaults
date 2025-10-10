@@ -54,8 +54,8 @@ export default function Home() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Configurable Oracle</h3>
             <p className="text-gray-600">
-              Control price feeds with a settable aggregator that implements Chainlink&apos;s interface 
-              for testing market dynamics.
+              Control price feeds with a simple Oracle Mock for testing market dynamics 
+              and understanding oracle behavior in DeFi protocols.
             </p>
           </div>
 
@@ -115,7 +115,7 @@ export default function Home() {
                 <li>• Foundry (Solidity, OpenZeppelin)</li>
                 <li>• Morpho Blue v1.1</li>
                 <li>• ERC-4626 Vaults</li>
-                <li>• Chainlink Oracle Interface</li>
+                <li>• Oracle Mock (Educational)</li>
               </ul>
             </div>
             <div>

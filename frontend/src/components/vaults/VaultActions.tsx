@@ -9,9 +9,10 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useTokenAllowance } from '@/hooks/useTokenAllowance';
 import { vaults, tokens } from '@/lib/contracts';
 import { metaMorphoAbi, erc20Abi } from '@/lib/abis';
+import { isWrongNetwork, switchToExpectedNetwork, getNetworkInfo, EXPECTED_CHAIN_ID } from '@/lib/networkUtils';
 
 export function VaultActions() {
-  const { address } = useAccount();
+  const { address, chain } = useAccount();
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
@@ -60,6 +61,10 @@ export function VaultActions() {
       </div>
     );
   }
+
+  // Check if user is on the correct network
+  const wrongNetwork = isWrongNetwork(chain);
+  const networkInfo = getNetworkInfo(chain);
 
   const depositAmountBN = depositAmount ? parseUnits(depositAmount, 18) : BigInt(0);
   const withdrawAmountBN = withdrawAmount ? parseUnits(withdrawAmount, 18) : BigInt(0);
@@ -125,6 +130,36 @@ export function VaultActions() {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-6">Vault Actions</h2>
+
+      {/* Wrong Network Warning */}
+      {wrongNetwork && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-red-800">Wrong Network</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>
+                  You're connected to <strong>{networkInfo.current.name}</strong> (Chain ID: {networkInfo.current.id}).
+                  Please switch to <strong>{networkInfo.expected.name}</strong> (Chain ID: {networkInfo.expected.id}) to continue.
+                </p>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={switchToExpectedNetwork}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Switch to {networkInfo.expected.name}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-6">
@@ -203,19 +238,19 @@ export function VaultActions() {
               </div>
               <button
                 onClick={handleApprove}
-                disabled={isLoading || !depositAmountBN}
+                disabled={isLoading || !depositAmountBN || wrongNetwork}
                 className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors"
               >
-                {approveLoading ? 'Approving...' : `Approve ${depositAmount || '0'} fakeUSD`}
+                {wrongNetwork ? 'Wrong Network - Switch Above' : (approveLoading ? 'Approving...' : `Approve ${depositAmount || '0'} fakeUSD`)}
               </button>
             </div>
           ) : (
             <button
               onClick={handleDeposit}
-              disabled={isLoading || !canDeposit}
+              disabled={isLoading || !canDeposit || wrongNetwork}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors"
             >
-              {depositLoading ? 'Depositing...' : 'Deposit'}
+              {wrongNetwork ? 'Wrong Network - Switch Above' : (depositLoading ? 'Depositing...' : 'Deposit')}
             </button>
           )}
         </div>
@@ -265,10 +300,10 @@ export function VaultActions() {
 
           <button
             onClick={handleWithdraw}
-            disabled={isLoading || !canWithdraw}
+            disabled={isLoading || !canWithdraw || wrongNetwork}
             className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors"
           >
-            {withdrawLoading ? 'Withdrawing...' : 'Withdraw'}
+            {wrongNetwork ? 'Wrong Network - Switch Above' : (withdrawLoading ? 'Withdrawing...' : 'Withdraw')}
           </button>
         </div>
       )}

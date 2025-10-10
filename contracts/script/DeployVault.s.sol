@@ -8,8 +8,10 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IMetaMorphoV1_1} from "metamorpho-v1.1/src/interfaces/IMetaMorphoV1_1.sol";
 import {IMetaMorphoV1_1Factory} from "metamorpho-v1.1/src/interfaces/IMetaMorphoV1_1Factory.sol";
 import {MarketParams, Id} from "metamorpho-v1.1/lib/morpho-blue/src/interfaces/IMorpho.sol";
+import {MarketParamsLib} from "metamorpho-v1.1/lib/morpho-blue/src/libraries/MarketParamsLib.sol";
 
 contract DeployVault is Script {
+    using MarketParamsLib for MarketParams;
     
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -54,8 +56,36 @@ contract DeployVault is Script {
         // Note: Guardian can be set separately after deployment if needed
         console.log("Guardian not set - can be configured later");
         
-        console.log("Vault deployment complete!");
-        console.log("Note: Use the frontend admin panel or separate script to configure markets and supply caps.");
+        // Configure vault with market and supply cap
+        console.log("\nConfiguring vault with market...");
+        address collateralToken = vm.envAddress("COLLATERAL_TOKEN");
+        address oracle = vm.envAddress("ORACLE_ADDRESS");
+        address irm = vm.envAddress("IRM_ADDRESS");
+        uint256 lltv = vm.envUint("LLTV");
+        
+        MarketParams memory marketParams = MarketParams({
+            loanToken: fakeUSD,
+            collateralToken: collateralToken,
+            oracle: oracle,
+            irm: irm,
+            lltv: lltv
+        });
+        
+        // Set unlimited supply cap for the market
+        uint184 supplyCap = type(uint184).max; // Unlimited
+        vaultContract.submitCap(marketParams, supplyCap);
+        console.log("Supply cap submitted (pending)");
+        
+        // Accept the cap immediately (timelock is 0 for hackathon speed)
+        vaultContract.acceptCap(marketParams);
+        console.log("Supply cap accepted - market configured with unlimited supply cap");
+        
+        // CRITICAL: Add market to supply queue to enable deposits
+        // Note: acceptCap adds to withdraw queue, but supply queue must be set separately
+        Id[] memory supplyQueue = new Id[](1);
+        supplyQueue[0] = marketParams.id();
+        vaultContract.setSupplyQueue(supplyQueue);
+        console.log("Market added to supply queue - vault can now accept deposits");
         
         vm.stopBroadcast();
         
@@ -64,6 +94,7 @@ contract DeployVault is Script {
         console.log("Asset (fakeUSD):", fakeUSD);
         console.log("Owner/Curator/Allocator:", deployer);
         console.log("Timelock: 0");
+        console.log("Supply Queue: 1 market configured");
     }
     
 }

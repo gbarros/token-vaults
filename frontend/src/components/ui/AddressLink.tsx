@@ -17,7 +17,7 @@ export function AddressLink({
   showFullOnHover = true 
 }: AddressLinkProps) {
   const displayAddress = `${address.slice(0, displayLength.start)}...${address.slice(-displayLength.end)}`;
-  const etherscanUrl = `https://explorer-eden-testnet.binarybuilders.services/address/${address}`;
+  const etherscanUrl = `https://eden-testnet.blockscout.com/address/${address}`;
 
   return (
     <a
