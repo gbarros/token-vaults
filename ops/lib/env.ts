@@ -28,7 +28,7 @@ export const edenTestnet = {
   blockExplorers: {
     default: {
       name: 'Blockscout',
-      url: 'https://explorer-eden-testnet.binarybuilders.services',
+      url: 'https://eden-testnet.blockscout.com/api/',
     },
   },
   testnet: true,
