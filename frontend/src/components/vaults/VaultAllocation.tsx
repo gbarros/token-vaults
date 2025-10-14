@@ -63,7 +63,28 @@ export function VaultAllocation() {
 
           {/* Market Allocation */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Market Allocation</h3>
+            <div className="flex items-center space-x-2 mb-3">
+              <h3 className="text-sm font-medium text-gray-700">Market Allocation</h3>
+              <div className="group relative">
+                <svg 
+                  className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                  />
+                </svg>
+                <div className="absolute left-6 top-0 invisible group-hover:visible bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-10">
+                  Demo uses 1 market. Vaults can allocate to multiple markets.
+                  <div className="absolute top-2 -left-1 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                </div>
+              </div>
+            </div>
             <div className="space-y-3">
               {/* Sandbox Market */}
               <div className="border border-gray-200 rounded-lg p-4">

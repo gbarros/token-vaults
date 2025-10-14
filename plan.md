@@ -94,7 +94,7 @@ This document is a working plan for building a public demo of a Vault product us
 ## 3. What Morpho Offers on Sepolia
 
 * **Morpho Blue Core** deployed on Sepolia.
-* Note: On Sepolia, we will deploy our own oracle contracts instead of using a `MorphoChainlinkOracleV2Factory`.
+* Note: On Eden, we deploy our own oracle contracts for testnet simplicity.
 * MetaMorpho v1.1 factory availability on Sepolia is not assumed; Page 2 focuses on Option B (direct to Morpho Blue).
 * **Public Allocator** and **Pre-Liquidation Factory**.
 * **Addresses are published** on [docs.morpho.org](https://docs.morpho.org/addresses).
@@ -254,7 +254,7 @@ For this demo, we will implement **Option B (Direct to Morpho Blue)** first.
 
 * **M0:** Setting the Stage (Setup & Mocks Page) ✅ **COMPLETE**
   * Faucet tokens live; balances + totalSupply visible; mint via UI works.
-  * Chainlink‑compatible aggregator deployed; self‑deployed oracle contract wired to it (no factory on Sepolia); price controllable in UI with presets.
+  * Oracle mock deployed for testnet; price controllable in UI with presets for testing market dynamics.
   * Sandbox market ready: either deployed via UI (or script) using our tokens + oracle + IRM, and seeded to target utilization via an "Initialize utilization" action.
 
 * **M1:** Page 1 live on Sepolia (deposit/withdraw + APY view working against a MetaMorpho v1.1 vault). ✅ **COMPLETE**
@@ -313,12 +313,12 @@ For this demo, we will implement **Option B (Direct to Morpho Blue)** first.
   * Rate-limit per address per 60s; max faucet mint per call.
   * Display user balances for both tokens.
 
-* **Oracle Controls (Chainlink-compatible)**
+* **Oracle Controls (Testnet)**
 
-  * Deploy a **Settable Aggregator** (implements `AggregatorV3Interface`) per pair we need (e.g., `fakeTIA/fakeUSD`).
-  * Expose UI to **set price**, **roundId**, and **updatedAt\`** (sanity checks) → emits a new round.
-  * Wire the aggregator into a **self-deployed Oracle contract** that reads from the Settable Aggregator and exposes the interface required by Morpho Blue on Sepolia (since the factory is not available).
-  * UI shows current on-chain **answer** and last update time; add buttons for common scenarios (±5%, ±20%, crash, recovery).
+  * Deploy an **OracleMock** for price feed testing (e.g., `fakeTIA/fakeUSD`).
+  * Expose UI to **set price** for testing market dynamics.
+  * Simple, direct oracle integration perfect for educational demos.
+  * UI shows current on-chain price and last update time; add buttons for common scenarios (±5%, ±20%, crash, recovery).
 
 * **Sandbox Market**
 

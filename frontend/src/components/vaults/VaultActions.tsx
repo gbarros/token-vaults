@@ -9,7 +9,7 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useTokenAllowance } from '@/hooks/useTokenAllowance';
 import { vaults, tokens } from '@/lib/contracts';
 import { metaMorphoAbi, erc20Abi } from '@/lib/abis';
-import { isWrongNetwork, switchToExpectedNetwork, getNetworkInfo, EXPECTED_CHAIN_ID } from '@/lib/networkUtils';
+import { isWrongNetwork, switchToExpectedNetwork, getNetworkInfo } from '@/lib/networkUtils';
 import { formatTokenString } from '@/lib/formatNumber';
 
 export function VaultActions() {
@@ -145,7 +145,7 @@ export function VaultActions() {
               <h3 className="text-sm font-medium text-red-800">Wrong Network</h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>
-                  You're connected to <strong>{networkInfo.current.name}</strong> (Chain ID: {networkInfo.current.id}).
+                  You&apos;re connected to <strong>{networkInfo.current.name}</strong> (Chain ID: {networkInfo.current.id}).
                   Please switch to <strong>{networkInfo.expected.name}</strong> (Chain ID: {networkInfo.expected.id}) to continue.
                 </p>
               </div>

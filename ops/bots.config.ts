@@ -109,36 +109,36 @@ export const botConfig: BotConfig = {
   
   lenders: {
     enabled: true,
-    agentCount: 3,
-    minInterval: 30000,  // 30 seconds
-    maxInterval: 120000, // 2 minutes
-    minSupply: '100',    // 100 fakeUSD
-    maxSupply: '1000',   // 1000 fakeUSD
+    agentCount: 2,        // Reduced from 3 to 2
+    minInterval: 60000,   // 1 minute (reduced frequency)
+    maxInterval: 180000,  // 3 minutes (reduced frequency)
+    minSupply: '50',      // 50 fakeUSD (reduced from 100)
+    maxSupply: '300',     // 300 fakeUSD (reduced from 1000)
     strategy: 'random'
     // Event-driven: if utilization > 90%, supply more aggressively
   },
   
   borrowers: {
     enabled: true,
-    agentCount: 4,
+    agentCount: 5,        // Increased from 4 to 5
     // 50% smart (monitor health factor), 50% dumb (random actions)
     smartRatio: 0.5,
-    minInterval: 45000,   // 45 seconds
-    maxInterval: 180000,  // 3 minutes
+    minInterval: 30000,   // 30 seconds (increased frequency)
+    maxInterval: 120000,  // 2 minutes (increased frequency)
     // Smart borrowers keep health factor above 1.5
     minHealthFactor: 1.5,
-    // Target 70% utilization of collateral
-    targetUtilization: 0.7
+    // Target 75% utilization of collateral (increased from 70%)
+    targetUtilization: 0.75
     // Event-driven: if market utilization < 20%, borrow more
   },
   
   vaultUsers: {
     enabled: true,
-    agentCount: 5,
-    minInterval: 40000,   // 40 seconds
-    maxInterval: 150000,  // 2.5 minutes
+    agentCount: 3,        // Reduced from 5 to 3
+    minInterval: 60000,   // 1 minute (reduced frequency)
+    maxInterval: 180000,  // 3 minutes (reduced frequency)
     minDeposit: '50',     // 50 fakeUSD
-    maxDeposit: '800',    // 800 fakeUSD
+    maxDeposit: '400',    // 400 fakeUSD (reduced from 800)
     minWithdraw: '50',    // 50 shares minimum
     maxWithdraw: '500',   // 500 shares maximum
     // 0.5% chance per cycle to withdraw instead of deposit

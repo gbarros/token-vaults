@@ -9,7 +9,7 @@ This directory contains Forge scripts that replace the TypeScript ops scripts fo
 
 **Oracle Options (choose one):**
 - **`DeployOracleMock.s.sol`** - Deploy simple OracleMock (easiest, no aggregator needed) ⭐ **Recommended for EDEN**
-- **`DeployAggregator.s.sol`** + **`DeployOracle.s.sol`** - Deploy SettableAggregator + OracleFromAggregator (Chainlink-compatible)
+- **`DeployAggregator.s.sol`** + **`DeployOracle.s.sol`** - Deploy SettableAggregator + OracleFromAggregator (alternative approach)
 
 **Market & Vault:**
 - **`CreateMarket.s.sol`** - Create Morpho Blue sandbox market
@@ -93,7 +93,7 @@ INIT_SCENARIO=1 forge script script/InitializeUtilizationImproved.s.sol --rpc-ur
 AUTO_FIX=true forge script script/AnalyzeAndInitialize.s.sol --rpc-url eden --broadcast
 ```
 
-**Note**: Eden doesn't have Chainlink support, so we use a simple `OracleMock` instead of the more complex `SettableAggregator` + `OracleFromAggregator` pattern. The aggregator-based scripts are kept in the repo for educational reference only.
+**Note**: For Eden Testnet, we use a simple `OracleMock` instead of the more complex `SettableAggregator` + `OracleFromAggregator` pattern. The aggregator-based scripts are kept in the repo for educational reference only.
 
 ### 3. Initialization Scenarios
 
@@ -203,8 +203,8 @@ PRICE=5000  # 50.00 with 2 decimals
 - Perfect for testnets without oracle infrastructure
 
 ❌ **Cons:**
-- Not Chainlink-compatible
 - Manual price updates only (no automation)
+- Educational/testnet use only
 - Not recommended for production
 
 **Deploy with:**
@@ -212,13 +212,13 @@ PRICE=5000  # 50.00 with 2 decimals
 INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol --rpc-url eden --broadcast
 ```
 
-### OracleFromAggregator (Chainlink-Compatible)
-**Best for:** Testing Chainlink integration, production-like setup
+### OracleFromAggregator (Production-Like)
+**Best for:** Testing production-like oracle setup
 
 ✅ **Pros:**
-- Chainlink-compatible interface
+- Standard aggregator interface
 - Staleness checks and validation
-- Can connect to real Chainlink feeds later
+- Separates price source from oracle logic
 - Better for production testing
 
 ❌ **Cons:**

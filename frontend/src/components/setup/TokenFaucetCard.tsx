@@ -148,8 +148,14 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
 
   const isTokenDeployed = Boolean(tokens[selectedToken]);
   const isMinting = isPending || isMintConfirming;
-  const cooldownSeconds = remainingCooldown ? Number(remainingCooldown) : 0;
-  const showCooldown = cooldownSeconds > 0;
+  
+  // Type assertions for contract read data (useReadContract returns unknown)
+  const userBalanceTyped = userBalance as bigint | undefined;
+  const totalSupplyTyped = totalSupply as bigint | undefined;
+  const tokenSymbolTyped = tokenSymbol as string | undefined;
+  const maxMintPerCallTyped = maxMintPerCall as bigint | undefined;
+  const remainingCooldownTyped = remainingCooldown as bigint | undefined;
+  const canMintTyped = canMint as boolean | undefined;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -203,9 +209,9 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               </label>
               <div className="bg-gray-50 rounded-md p-3">
                 <span className="text-lg font-semibold">
-                  {userBalance ? formatTokenString(formatEther(userBalance as bigint)) : '0'}
+                  {userBalanceTyped ? formatTokenString(formatEther(userBalanceTyped)) : '0'}
                 </span>
-                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbol || '')}</span>
+                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbolTyped || '')}</span>
               </div>
             </div>
             <div>
@@ -214,9 +220,9 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               </label>
               <div className="bg-gray-50 rounded-md p-3">
                 <span className="text-lg font-semibold">
-                  {totalSupply ? formatTokenString(formatEther(totalSupply as bigint)) : '0'}
+                  {totalSupplyTyped ? formatTokenString(formatEther(totalSupplyTyped)) : '0'}
                 </span>
-                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbol || '')}</span>
+                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbolTyped || '')}</span>
               </div>
             </div>
           </div>
@@ -237,24 +243,16 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               />
               <button
                 onClick={handleMint}
-                disabled={!canMint || isMinting || !mintAmount}
+                disabled={!canMintTyped || isMinting || !mintAmount}
                 className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {isMinting ? 'Minting...' : 'Mint'}
               </button>
             </div>
             
-            {/* Cooldown Info */}
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {(showCooldown ? (
-              <p className="text-sm text-yellow-600 mt-1">
-                ⏱️ Cooldown: {cooldownSeconds}s remaining
-              </p>
-            ) : (<></>)) as any}
-            
-            {maxMintPerCall && (
+            {maxMintPerCallTyped && (
               <p className="text-sm text-gray-500 mt-1">
-                Max per call: {formatTokenString(formatEther(maxMintPerCall as bigint))} {String(tokenSymbol || '')}
+                Max per call: {formatTokenString(formatEther(maxMintPerCallTyped))} {String(tokenSymbolTyped || '')}
               </p>
             )}
           </div>

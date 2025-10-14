@@ -57,9 +57,10 @@ export async function switchToExpectedNetwork(): Promise<boolean> {
     
     toast.success(`Switched to ${config.chainName}`);
     return true;
-  } catch (switchError: any) {
+  } catch (switchError) {
     // Error code 4902 means the chain hasn't been added to MetaMask yet
-    if (switchError.code === 4902) {
+    const error = switchError as { code?: number; message?: string };
+    if (error.code === 4902) {
       try {
         // Add the network to MetaMask
         await window.ethereum.request({
@@ -83,7 +84,7 @@ export async function switchToExpectedNetwork(): Promise<boolean> {
         return false;
       }
     } else {
-      console.error('Failed to switch network:', switchError);
+      console.error('Failed to switch network:', error);
       toast.error(`Failed to switch to ${config.chainName}`);
       return false;
     }

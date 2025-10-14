@@ -254,7 +254,7 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
                   Eden Testnet - Simple Oracle
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
-                  Using Morpho Blue's built-in OracleMock. This is simpler than the Chainlink-compatible aggregator approach and perfect for testnets.
+                  Using Morpho Blue&apos;s built-in OracleMock for testnet deployment. Provides simple, controllable price feeds.
                 </p>
               </div>
             </div>

@@ -672,7 +672,7 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Total Supply:</span>
                   <span className={`ml-2 font-medium ${marketMetrics.error ? 'text-red-500' : ''}`}>
-                    {marketMetrics.error ? 'Error' : `${parseFloat(marketMetrics.totalSupply).toFixed(2)}`}
+                    {marketMetrics.error ? 'Error' : formatTokenAmount(marketMetrics.totalSupply)}
                   </span>
                 </div>
               </div>

@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { type Abi, type Address } from 'viem';
+import { type Abi, type Address, type ReadContractParameters } from 'viem';
 import { publicClient } from '@/lib/wagmi';
 
 interface UseProxyReadContractParams<TAbi extends Abi = Abi> {
@@ -66,7 +66,7 @@ export function useProxyReadContract<TAbi extends Abi = Abi, TData = unknown>({
         abi,
         functionName,
         args,
-      } as any);
+      } as ReadContractParameters);
 
       return result as TData;
     },

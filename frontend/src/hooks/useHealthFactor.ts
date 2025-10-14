@@ -45,7 +45,7 @@ export function useHealthFactor(customPrice?: bigint): HealthFactorData {
   });
 
   // Use custom price if provided, otherwise use oracle price
-  const currentPrice = customPrice || oraclePrice || BigInt(0);
+  const currentPrice = customPrice || (oraclePrice as bigint | undefined) || BigInt(0);
 
   // Check if we have all required data
   if (!marketData || !positionData || !currentPrice || !marketParams) {

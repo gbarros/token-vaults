@@ -53,8 +53,8 @@ interface DeploymentArtifact {
 // These imports will fail gracefully if artifacts don't exist
 let deployTokensArtifact: DeploymentArtifact | null = null;
 let deployOracleMockArtifact: DeploymentArtifact | null = null;
-let deployAggregatorArtifact: DeploymentArtifact | null = null; // Optional - for Chainlink-compatible approach
-let deployOracleArtifact: DeploymentArtifact | null = null; // Optional - for Chainlink-compatible approach
+let deployAggregatorArtifact: DeploymentArtifact | null = null; // Optional - for alternative oracle approach
+let deployOracleArtifact: DeploymentArtifact | null = null; // Optional - for alternative oracle approach
 let createMarketArtifact: DeploymentArtifact | null = null;
 let deployVaultArtifact: DeploymentArtifact | null = null;
 
@@ -70,10 +70,10 @@ try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   deployOracleMockArtifact = require('../../../contracts/broadcast/DeployOracleMock.s.sol/3735928814/run-latest.json');
 } catch {
-  console.warn('ℹ️ DeployOracleMock artifact not found - trying Chainlink-compatible approach');
+  console.warn('ℹ️ DeployOracleMock artifact not found - trying alternative oracle approach');
 }
 
-// Optional: Try aggregator + oracle (Chainlink-compatible approach - fallback)
+// Optional: Try aggregator + oracle (alternative approach - fallback)
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   deployAggregatorArtifact = require('../../../contracts/broadcast/DeployAggregator.s.sol/3735928814/run-latest.json');
@@ -196,7 +196,7 @@ class ContractAddressManager {
             // Try OracleMock first (Eden/testnet approach - default)
             this._addresses.oracle = this.getContractAddress(deployOracleMockArtifact, 'OracleMock');
             
-            // Fallback to OracleFromAggregator (Chainlink-compatible approach)
+            // Fallback to OracleFromAggregator (alternative approach)
             if (!this._addresses.oracle) {
               this._addresses.oracle = this.getContractAddress(deployOracleArtifact, 'OracleFromAggregator');
             }
@@ -302,12 +302,12 @@ export const contracts = {
 
   // Oracle infrastructure
   // Defaults to OracleMock (Eden/testnet approach)
-  // Falls back to Aggregator + OracleFromAggregator (Chainlink-compatible approach)
+  // Falls back to Aggregator + OracleFromAggregator (alternative approach)
   oracles: {
     oracle: addressManager.oracle, // OracleMock or OracleFromAggregator
     aggregator: {
       pair: 'fakeTIA/fakeUSD',
-      address: addressManager.aggregator, // Optional - only for Chainlink-compatible approach
+      address: addressManager.aggregator, // Optional - only for alternative oracle approach
     },
   },
 
@@ -357,7 +357,7 @@ export const deploymentInfo = {
   transactions: {
     deployTokens: deployTokensArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
     deployOracleMock: deployOracleMockArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
-    // Optional: Chainlink-compatible approach
+    // Optional: Alternative oracle approach
     deployAggregator: deployAggregatorArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
     deployOracle: deployOracleArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],
     createMarket: createMarketArtifact?.transactions.map((tx: DeploymentTransaction) => tx.hash) || [],

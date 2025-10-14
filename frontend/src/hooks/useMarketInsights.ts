@@ -68,7 +68,7 @@ export function useMarketInsights(): MarketInsights {
       totalBorrowShares: marketDataStruct.totalBorrowShares,
       lastUpdate: marketDataStruct.lastUpdate,
       fee: marketDataStruct.fee,
-      price: oraclePrice,
+      price: oraclePrice as bigint,
       // rateAtTarget: undefined - SDK handles basic IRM automatically
     });
 

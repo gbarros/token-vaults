@@ -16,9 +16,24 @@ const EDEN_WS_URL = 'wss://ev-reth-eden-testnet.binarybuilders.services:8546';
 // Singleton WebSocket connection
 let ws: WebSocket | null = null;
 let wsReady = false;
+
+interface JsonRpcRequest {
+  id: number | string;
+  jsonrpc: string;
+  method: string;
+  params?: unknown[];
+}
+
+interface JsonRpcResponse {
+  id: number | string;
+  jsonrpc: string;
+  result?: unknown;
+  error?: { code: number; message: string };
+}
+
 const pendingRequests = new Map<number | string, {
-  resolve: (value: any) => void;
-  reject: (reason: any) => void;
+  resolve: (value: JsonRpcResponse) => void;
+  reject: (reason: Error) => void;
   timeout: NodeJS.Timeout;
 }>();
 
@@ -74,7 +89,7 @@ function initWebSocket() {
 }
 
 // Send JSON-RPC request via WebSocket
-function sendRpcRequest(body: any, timeoutMs = 5000): Promise<any> {
+function sendRpcRequest(body: JsonRpcRequest, timeoutMs = 5000): Promise<JsonRpcResponse> {
   return new Promise((resolve, reject) => {
     const ws = initWebSocket();
 

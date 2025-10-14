@@ -282,7 +282,7 @@ export const legacyAdaptiveCurveIrmAbi = [
 
 /**
  * Oracle ABI from compiled Forge artifacts
- * Compatible with Chainlink-style price feeds and Morpho oracles
+ * Used for Morpho Blue price oracle integration
  */
 export const oracleAbi = IOracleArtifact.abi;
 

@@ -13,7 +13,7 @@ export function VaultOverview() {
   const { data: vaultData, isLoading, error, isFetching } = useVaultData();
   const { data: supplyCapData, isLoading: supplyCapLoading, isFetching: supplyCapFetching } = useSupplyCap();
   const { data: supplyQueueLength, isLoading: supplyQueueLoading, isFetching: supplyQueueFetching } = useSupplyQueue();
-  const { data: allocationData, isFetching: allocationFetching } = useVaultAllocation();
+  const { isFetching: allocationFetching } = useVaultAllocation();
 
   if (!vaults.metaMorphoDemo.address) {
     return (

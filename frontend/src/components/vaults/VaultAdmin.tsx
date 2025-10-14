@@ -45,8 +45,10 @@ export function VaultAdmin() {
     address.toLowerCase() === vaultData.curator.toLowerCase();
   
   // For now, assume owner has all roles (which is correct in our setup)
-  const hasOwnerRole = isOwner;
-  const hasCuratorRole = isOwner || isCurator;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _hasOwnerRole = isOwner;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _hasCuratorRole = isOwner || isCurator;
   const hasAllocatorRole = isOwner; // Owner is set as allocator in deployment
 
   const marketParams = getMarketParams();
@@ -360,7 +362,7 @@ export function VaultAdmin() {
                     ${formatTokenString(formatUnits(allocationData.idleAssets, 18))} fakeUSD is currently unallocated.
                   </p>
                   <p className="text-xs text-orange-600 mt-1">
-                    Use "Rebalance Portfolio" to optimize fund allocation and maximize yield.
+                    Use &quot;Rebalance Portfolio&quot; to optimize fund allocation and maximize yield.
                   </p>
                 </div>
               )}

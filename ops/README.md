@@ -5,7 +5,7 @@
 ## 🛠️ Available Scripts
 
 ### Core Utilities
-- **`buildOracle.ts`** - Build oracle using Morpho's ChainlinkOracleV2Factory (alternative to self-deployed)
+- **`buildOracle.ts`** - Build oracle using Morpho's OracleV2Factory (alternative to self-deployed)
 - **`extractOracleAddress.ts`** - Extract oracle addresses from Morpho factory deployments
 - **`extractForgeAddresses.ts`** - Extract all contract addresses from Forge deployment artifacts
 - **`testMorphoSDK.ts`** - Validate Morpho Blue SDK functionality and compare with manual RPC calls

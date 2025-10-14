@@ -122,7 +122,7 @@ This eliminates duplication and makes network switching simple!
    
    # Deploy all contracts in sequence with automatic verification
    # Note: Using 'eden' RPC endpoint defined in foundry.toml
-   # Eden uses OracleMock (no Chainlink support)
+   # Eden uses OracleMock for simplicity
    
    forge script script/DeployTokens.s.sol \
      --rpc-url eden \
@@ -187,13 +187,13 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 
 #### 1. Smart Contracts (`contracts/`)
 - **FaucetERC20.sol**: ERC20 token with public faucet, cooldown mechanism, and configurable limits
-- **SettableAggregator.sol**: Chainlink-compatible price aggregator for testing oracle functionality
+- **SettableAggregator.sol**: Standard price aggregator for testing oracle functionality
 - **Foundry Setup**: Complete build environment with OpenZeppelin dependencies
 
 #### 2. Operations Scripts (`ops/`)
 - **TypeScript Environment**: Debugging utilities and on-chain analysis tools
 - **Utility Scripts**:
-  - `buildOracle.ts`: Create Morpho oracle using Chainlink factory (alternative to Forge)
+  - `buildOracle.ts`: Create Morpho oracle using oracle factory (alternative to Forge)
   - `extractOracleAddress.ts`: Extract oracle addresses from factory deployments
   - `extractForgeAddresses.ts`: Extract all contract addresses from Forge deployment artifacts
   - `testMorphoSDK.ts`: Validate Morpho Blue SDK functionality and compare with manual RPC calls
