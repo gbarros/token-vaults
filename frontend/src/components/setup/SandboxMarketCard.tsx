@@ -10,6 +10,7 @@ import { useMarketDataRaw } from '@/hooks/useMarketDataRaw';
 import { useMarketInsights } from '@/hooks/useMarketInsights';
 import { morphoBlueAbi, erc20Abi } from '../../lib/abis';
 import { marketParamsToAbi } from '../../lib/sdkUtils';
+import { formatTokenAmount } from '../../lib/formatNumber';
 
 // Helper function to create Blockscout Eden Testnet links
 const getEtherscanLink = (address: string) => `https://eden-testnet.blockscout.com/address/${address}`;
@@ -678,7 +679,7 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
             </div>
             <div className="mt-2 text-xs text-gray-500">
               <p>
-                📊 Total Borrowed: {marketMetrics.error ? 'Error' : `${parseFloat(marketMetrics.totalBorrow).toFixed(2)}`} fakeUSD
+                📊 Total Borrowed: {marketMetrics.error ? 'Error' : `${formatTokenAmount(marketMetrics.totalBorrow)}`} fakeUSD
               </p>
               <p className="mt-1">
                 🔄 Updates every 30s • APR calculated from IRM using Morpho SDK
@@ -707,14 +708,14 @@ export default function SandboxMarketCard({ onRefresh: _onRefresh }: SandboxMark
               <div className="bg-blue-50 rounded-md p-2">
                 <span className="text-blue-600 font-medium">Available Liquidity:</span>
                 <div className="text-blue-800 font-semibold">
-                  {marketInsights.error ? 'Error' : `${parseFloat(marketInsights.availableLiquidity).toFixed(2)} fakeUSD`}
+                  {marketInsights.error ? 'Error' : `${formatTokenAmount(marketInsights.availableLiquidity)} fakeUSD`}
                 </div>
               </div>
               
               <div className="bg-green-50 rounded-md p-2">
                 <span className="text-green-600 font-medium">Total Value Locked:</span>
                 <div className="text-green-800 font-semibold">
-                  {marketInsights.error ? 'Error' : `${parseFloat(marketInsights.totalValueLocked).toFixed(2)} fakeUSD`}
+                  {marketInsights.error ? 'Error' : `${formatTokenAmount(marketInsights.totalValueLocked)} fakeUSD`}
                 </div>
               </div>
               

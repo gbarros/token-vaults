@@ -3,6 +3,7 @@
 import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { useMarketData } from '@/hooks/useMarketData';
 import { formatUnits } from 'viem';
+import { formatTokenString, formatPercentage } from '@/lib/formatNumber';
 
 export function VaultAllocation() {
   const { data: allocation, isLoading: allocationLoading, isFetching: allocationFetching } = useVaultAllocation();
@@ -74,13 +75,13 @@ export function VaultAllocation() {
                     <div className="text-right">
                       <div className="text-sm font-medium text-gray-900">
                         {allocation?.marketAllocations?.[0]?.assets 
-                          ? `${parseFloat(formatUnits(allocation.marketAllocations[0].assets, 18)).toFixed(2)} fakeUSD`
-                          : '0.00 fakeUSD'
+                          ? `${formatTokenString(formatUnits(allocation.marketAllocations[0].assets, 18))} fakeUSD`
+                          : '0 fakeUSD'
                         }
                       </div>
                       <div className="text-xs text-gray-500">
                         {allocation?.totalAssets && allocation.totalAssets > BigInt(0)
-                          ? `${((Number(allocation.marketAllocations?.[0]?.assets || BigInt(0)) / Number(allocation.totalAssets)) * 100).toFixed(1)}%`
+                          ? formatPercentage(((Number(allocation.marketAllocations?.[0]?.assets || BigInt(0)) / Number(allocation.totalAssets)) * 100), 1)
                           : '0%'
                         }
                       </div>
@@ -91,13 +92,13 @@ export function VaultAllocation() {
                   <div>
                     <span className="text-gray-500">Utilization:</span>
                     <div className="font-medium">
-                      {marketData?.utilization ? `${(marketData.utilization * 100).toFixed(1)}%` : '0%'}
+                      {marketData?.utilization ? formatPercentage(marketData.utilization * 100, 1) : '0%'}
                     </div>
                   </div>
                   <div>
                     <span className="text-gray-500">Supply APY:</span>
                     <div className="font-medium text-green-600">
-                      {marketData?.supplyAPY ? `${marketData.supplyAPY.toFixed(2)}%` : '0%'}
+                      {marketData?.supplyAPY ? formatPercentage(marketData.supplyAPY, 2) : '0%'}
                     </div>
                   </div>
                   <div>
@@ -112,7 +113,7 @@ export function VaultAllocation() {
                 <div className="mt-3">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Market Utilization</span>
-                    <span>{marketData?.utilization ? `${(marketData.utilization * 100).toFixed(1)}%` : '0%'}</span>
+                    <span>{marketData?.utilization ? formatPercentage(marketData.utilization * 100, 1) : '0%'}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
@@ -133,13 +134,13 @@ export function VaultAllocation() {
                   <div className="text-right">
                     <div className="text-sm font-medium text-gray-900">
                       {allocation?.idleAssets 
-                        ? `${parseFloat(formatUnits(allocation.idleAssets, 18)).toFixed(2)} fakeUSD`
-                        : '0.00 fakeUSD'
+                        ? `${formatTokenString(formatUnits(allocation.idleAssets, 18))} fakeUSD`
+                        : '0 fakeUSD'
                       }
                     </div>
                     <div className="text-xs text-gray-500">
                       {allocation?.totalAssets && allocation.totalAssets > BigInt(0)
-                        ? `${((Number(allocation.idleAssets || BigInt(0)) / Number(allocation.totalAssets)) * 100).toFixed(1)}%`
+                        ? formatPercentage(((Number(allocation.idleAssets || BigInt(0)) / Number(allocation.totalAssets)) * 100), 1)
                         : '0%'
                       }
                     </div>

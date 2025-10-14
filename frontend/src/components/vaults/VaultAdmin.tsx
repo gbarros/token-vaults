@@ -9,6 +9,7 @@ import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { vaults, getMarketParams } from '@/lib/contracts';
 import { metaMorphoAbi } from '@/lib/abis';
 import { AddressLink } from '@/components/ui/AddressLink';
+import { formatTokenString } from '@/lib/formatNumber';
 
 export function VaultAdmin() {
   const { address } = useAccount();
@@ -356,7 +357,7 @@ export function VaultAdmin() {
                     <span className="text-xs font-medium text-orange-800">Portfolio Rebalancing Needed</span>
                   </div>
                   <p className="text-xs text-orange-700">
-                    ${parseFloat(formatUnits(allocationData.idleAssets, 18)).toFixed(2)} fakeUSD is currently unallocated.
+                    ${formatTokenString(formatUnits(allocationData.idleAssets, 18))} fakeUSD is currently unallocated.
                   </p>
                   <p className="text-xs text-orange-600 mt-1">
                     Use "Rebalance Portfolio" to optimize fund allocation and maximize yield.
@@ -370,7 +371,7 @@ export function VaultAdmin() {
                     <span className="text-xs font-medium text-green-800">Portfolio Auto-Allocated</span>
                   </div>
                   <p className="text-xs text-green-700">
-                    All ${parseFloat(formatUnits(allocationData.totalAssets, 18)).toFixed(2)} fakeUSD is automatically allocated and earning yield.
+                    All ${formatTokenString(formatUnits(allocationData.totalAssets, 18))} fakeUSD is automatically allocated and earning yield.
                   </p>
                   <p className="text-xs text-green-600 mt-1">
                     MetaMorpho automatically allocates deposits to markets in the supply queue. Manual rebalancing is only needed for strategy changes.
@@ -413,7 +414,7 @@ export function VaultAdmin() {
                   <p>• <strong>Strategy changes:</strong> Adjust exposure across different markets</p>
                   <p className="mt-2 text-blue-600">
                     {allocationData?.idleAssets && allocationData.idleAssets > BigInt(0) 
-                      ? `Action available: Deploy $${parseFloat(formatUnits(allocationData.idleAssets, 18)).toFixed(2)} idle funds to market`
+                      ? `Action available: Deploy $${formatTokenString(formatUnits(allocationData.idleAssets, 18))} idle funds to market`
                       : 'All deposits are auto-allocated. Manual rebalancing only needed for strategy changes.'
                     }
                   </p>

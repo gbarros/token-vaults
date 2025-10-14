@@ -7,6 +7,7 @@ import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { vaults } from '@/lib/contracts';
 import { formatUnits } from 'viem';
 import { AddressLink } from '@/components/ui/AddressLink';
+import { formatTokenString } from '@/lib/formatNumber';
 
 export function VaultOverview() {
   const { data: vaultData, isLoading, error, isFetching } = useVaultData();
@@ -148,8 +149,8 @@ export function VaultOverview() {
               <span className="text-sm text-gray-600">Total Assets:</span>
               <span className="text-sm font-medium">
                 {vaultData?.totalAssets 
-                  ? `${parseFloat(formatUnits(vaultData.totalAssets, 18)).toFixed(6)} fakeUSD`
-                  : '0.000000 fakeUSD'
+                  ? `${formatTokenString(formatUnits(vaultData.totalAssets, 18))} fakeUSD`
+                  : '0 fakeUSD'
                 }
               </span>
             </div>
@@ -157,8 +158,8 @@ export function VaultOverview() {
               <span className="text-sm text-gray-600">Total Supply:</span>
               <span className="text-sm font-medium">
                 {vaultData?.totalSupply 
-                  ? `${parseFloat(formatUnits(vaultData.totalSupply, 18)).toFixed(6)} ${vaults.metaMorphoDemo.symbol}`
-                  : `0.000000 ${vaults.metaMorphoDemo.symbol}`
+                  ? `${formatTokenString(formatUnits(vaultData.totalSupply, 18))} ${vaults.metaMorphoDemo.symbol}`
+                  : `0 ${vaults.metaMorphoDemo.symbol}`
                 }
               </span>
             </div>
@@ -183,7 +184,7 @@ export function VaultOverview() {
                   <span className={supplyCapData.supplyCap === BigInt(0) ? 'text-red-600' : 'text-green-600'}>
                     {supplyCapData.supplyCap === BigInt(0) 
                       ? 'Not Set' 
-                      : `${parseFloat(formatUnits(supplyCapData.supplyCap, 18)).toLocaleString()} fakeUSD`
+                      : `${formatTokenString(formatUnits(supplyCapData.supplyCap, 18))} fakeUSD`
                     }
                   </span>
                 ) : (
@@ -195,7 +196,7 @@ export function VaultOverview() {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Pending Cap:</span>
                 <span className="text-sm font-medium text-yellow-600">
-                  {parseFloat(formatUnits(supplyCapData.pendingCap.value, 18)).toLocaleString()} fakeUSD
+                  {formatTokenString(formatUnits(supplyCapData.pendingCap.value, 18))} fakeUSD
                 </span>
               </div>
             )}

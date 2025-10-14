@@ -6,6 +6,7 @@ import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
 import { contracts } from '../../lib/contracts';
 import { faucetERC20Abi } from '../../lib/abis';
+import { formatTokenString } from '../../lib/formatNumber';
 
 // Use FaucetERC20 ABI from compiled Forge artifacts
 const faucetTokenAbi = faucetERC20Abi;
@@ -147,6 +148,8 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
 
   const isTokenDeployed = Boolean(tokens[selectedToken]);
   const isMinting = isPending || isMintConfirming;
+  const cooldownSeconds = remainingCooldown ? Number(remainingCooldown) : 0;
+  const showCooldown = cooldownSeconds > 0;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -200,9 +203,9 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               </label>
               <div className="bg-gray-50 rounded-md p-3">
                 <span className="text-lg font-semibold">
-                  {userBalance ? formatEther(userBalance) : '0.0000'}
+                  {userBalance ? formatTokenString(formatEther(userBalance as bigint)) : '0'}
                 </span>
-                <span className="text-sm text-gray-600 ml-1">{tokenSymbol}</span>
+                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbol || '')}</span>
               </div>
             </div>
             <div>
@@ -211,9 +214,9 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               </label>
               <div className="bg-gray-50 rounded-md p-3">
                 <span className="text-lg font-semibold">
-                  {totalSupply ? formatEther(totalSupply) : '0.0000'}
+                  {totalSupply ? formatTokenString(formatEther(totalSupply as bigint)) : '0'}
                 </span>
-                <span className="text-sm text-gray-600 ml-1">{tokenSymbol}</span>
+                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbol || '')}</span>
               </div>
             </div>
           </div>
@@ -242,15 +245,16 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
             </div>
             
             {/* Cooldown Info */}
-            {remainingCooldown && remainingCooldown > 0 && (
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(showCooldown ? (
               <p className="text-sm text-yellow-600 mt-1">
-                ⏱️ Cooldown: {remainingCooldown}s remaining
+                ⏱️ Cooldown: {cooldownSeconds}s remaining
               </p>
-            )}
+            ) : (<></>)) as any}
             
             {maxMintPerCall && (
               <p className="text-sm text-gray-500 mt-1">
-                Max per call: {formatEther(maxMintPerCall)} {tokenSymbol}
+                Max per call: {formatTokenString(formatEther(maxMintPerCall as bigint))} {String(tokenSymbol || '')}
               </p>
             )}
           </div>

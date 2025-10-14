@@ -10,6 +10,7 @@ import { useTokenAllowance } from '@/hooks/useTokenAllowance';
 import { vaults, tokens } from '@/lib/contracts';
 import { metaMorphoAbi, erc20Abi } from '@/lib/abis';
 import { isWrongNetwork, switchToExpectedNetwork, getNetworkInfo, EXPECTED_CHAIN_ID } from '@/lib/networkUtils';
+import { formatTokenString } from '@/lib/formatNumber';
 
 export function VaultActions() {
   const { address, chain } = useAccount();
@@ -214,18 +215,18 @@ export function VaultActions() {
           <div className="text-sm text-gray-600 space-y-1">
             <div className="flex justify-between">
               <span>Your fakeUSD Balance:</span>
-              <span>{tokenBalance ? parseFloat(formatUnits(tokenBalance, 18)).toFixed(6) : '0.000000'}</span>
+              <span>{tokenBalance ? formatTokenString(formatUnits(tokenBalance, 18)) : '0'}</span>
             </div>
             <div className="flex justify-between">
               <span>Current Allowance:</span>
-              <span>{allowance ? parseFloat(formatUnits(allowance, 18)).toFixed(6) : '0.000000'}</span>
+              <span>{allowance ? formatTokenString(formatUnits(allowance, 18)) : '0'}</span>
             </div>
             <div className="flex justify-between">
               <span>Shares to Receive:</span>
               <span>
                 {depositAmountBN > BigInt(0) && vaultData?.totalAssets && vaultData?.totalSupply 
-                  ? (Number(depositAmountBN) * Number(vaultData.totalSupply) / Number(vaultData.totalAssets)).toFixed(6)
-                  : depositAmount || '0.000000'
+                  ? formatTokenString((Number(depositAmountBN) * Number(vaultData.totalSupply) / Number(vaultData.totalAssets)).toString())
+                  : depositAmount || '0'
                 }
               </span>
             </div>
@@ -285,14 +286,14 @@ export function VaultActions() {
           <div className="text-sm text-gray-600 space-y-1">
             <div className="flex justify-between">
               <span>Your Vault Shares:</span>
-              <span>{vaultData?.userShares ? parseFloat(formatUnits(vaultData.userShares, 18)).toFixed(6) : '0.000000'}</span>
+              <span>{vaultData?.userShares ? formatTokenString(formatUnits(vaultData.userShares, 18)) : '0'}</span>
             </div>
             <div className="flex justify-between">
               <span>Assets to Receive:</span>
               <span>
                 {withdrawAmountBN > BigInt(0) && vaultData?.totalAssets && vaultData?.totalSupply 
-                  ? (Number(withdrawAmountBN) * Number(vaultData.totalAssets) / Number(vaultData.totalSupply)).toFixed(6)
-                  : withdrawAmount || '0.000000'
+                  ? formatTokenString((Number(withdrawAmountBN) * Number(vaultData.totalAssets) / Number(vaultData.totalSupply)).toString())
+                  : withdrawAmount || '0'
                 } fakeUSD
               </span>
             </div>

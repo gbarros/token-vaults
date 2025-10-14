@@ -3,6 +3,7 @@
 import { useVaultData } from '@/hooks/useVaultData';
 import { useVaultAPY } from '@/hooks/useVaultAPY';
 import { formatUnits } from 'viem';
+import { formatTokenString, formatCurrency } from '@/lib/formatNumber';
 
 export function VaultPerformance() {
   const { data: vaultData, isLoading } = useVaultData();
@@ -58,8 +59,8 @@ export function VaultPerformance() {
                   <div className="animate-pulse h-4 bg-gray-200 rounded w-20"></div>
                 ) : (
                   vaultData?.totalAssets 
-                    ? `$${parseFloat(formatUnits(vaultData.totalAssets, 18)).toFixed(2)}`
-                    : '$0.00'
+                    ? `$${formatCurrency(formatUnits(vaultData.totalAssets, 18))}`
+                    : '$0'
                 )}
               </span>
             </div>
@@ -71,8 +72,8 @@ export function VaultPerformance() {
                   <div className="animate-pulse h-4 bg-gray-200 rounded w-20"></div>
                 ) : (
                   vaultData?.totalSupply 
-                    ? parseFloat(formatUnits(vaultData.totalSupply, 18)).toFixed(6)
-                    : '0.000000'
+                    ? formatTokenString(formatUnits(vaultData.totalSupply, 18))
+                    : '0'
                 )}
               </span>
             </div>
