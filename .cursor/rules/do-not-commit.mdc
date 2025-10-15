@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+-- do not run "git commit". It's always the user's responsibility to commit.
+-- do not commit anything.
+-- do not push. `git push` is disallowed.

@@ -269,7 +269,31 @@ This milestone provides the sandbox infrastructure needed to demo Morpho vault f
 - **TypeScript**: Debugging utilities and on-chain analysis
 - **Viem**: Ethereum client for contract interactions
 - **Morpho Blue SDK**: SDK validation and testing utilities
+- **Bot Simulation System**: Autonomous agents for realistic market activity
 - **Node.js 20**: Runtime environment
+
+## ✨ Key Features
+
+### 🤖 Bot Simulation System
+Autonomous agents that simulate realistic market activity for continuous testing and demonstration. Includes lenders, borrowers, vault users, oracle changers, and liquidators with auto-refill mechanisms and market rebalancing.
+
+📖 See [`ops/README.md`](ops/README.md) for complete bot system documentation.
+
+### 📊 Number Formatting
+Custom utility for displaying large numbers in a human-readable format with:
+- Thousand separators (1,000,000)
+- Smart abbreviations (1.5k, 2.3M, 1.2B)
+- Consistent formatting across all components
+
+📖 See [`frontend/README.md`](frontend/README.md) for frontend architecture and utilities.
+
+### 🚀 Vercel Deployment
+Production-ready deployment strategy using webpack aliases to handle contract artifacts:
+- Copies only essential files (~10) to committed `frontend/vercel/` folder
+- Keeps `contracts/out/` gitignored (1000+ files)
+- Works seamlessly in both development and production environments
+
+📖 See [`frontend/README.md`](frontend/README.md#vercel-deployment) for deployment guide.
 
 ## 📖 Morpho Integration
 

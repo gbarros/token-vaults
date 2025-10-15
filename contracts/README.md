@@ -8,8 +8,14 @@ This directory contains Forge scripts that replace the TypeScript ops scripts fo
 - **`DeployTokens.s.sol`** - Deploy fakeUSD and fakeTIA faucet tokens
 
 **Oracle Options (choose one):**
-- **`DeployOracleMock.s.sol`** - Deploy simple OracleMock (easiest, no aggregator needed) ⭐ **Recommended for EDEN**
-- **`DeployAggregator.s.sol`** + **`DeployOracle.s.sol`** - Deploy SettableAggregator + OracleFromAggregator (alternative approach)
+- **`DeployOracleMock.s.sol`** - Deploy simple OracleMock ⭐ **Recommended for Eden Testnet**
+  - Direct price setting for educational purposes
+  - No intermediate contracts needed
+  - Simpler to understand and test
+- **`DeployAggregator.s.sol`** + **`DeployOracle.s.sol`** - Deploy SettableAggregator + OracleFromAggregator
+  - Alternative pattern showing aggregator architecture
+  - Kept for reference and Sepolia compatibility
+  - More complex but closer to production patterns
 
 **Market & Vault:**
 - **`CreateMarket.s.sol`** - Create Morpho Blue sandbox market
@@ -43,7 +49,9 @@ cp env.example .env
 # DO NOT manually fill contract addresses - they auto-populate from deployments
 ```
 
-**Note**: We use the named RPC endpoint `eden` (defined in `foundry.toml`) instead of `--rpc-url $RPC_URL`. This is cleaner and avoids redundancy.
+**Notes:**
+- We use the named RPC endpoint `eden` (defined in `foundry.toml`) instead of `--rpc-url $RPC_URL`. This is cleaner and avoids redundancy.
+- **Blockscout Verification**: Eden Testnet uses Blockscout (not Etherscan), which doesn't require an API key. Simply add `--verify --verifier blockscout --verifier-url 'https://eden-testnet.blockscout.com/api/'` to your forge script commands.
 
 ### 2. Deploy in Sequence
 
