@@ -5,9 +5,10 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { formatUnits, parseUnits } from 'viem';
 import toast from 'react-hot-toast';
 import { contracts } from '../../lib/contracts';
-import OracleMockArtifact from '../../../../contracts/out/OracleMock.sol/OracleMock.json';
 
 // OracleMock ABI from compiled Forge artifacts
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const OracleMockArtifact = require('@contracts/out/OracleMock.sol/OracleMock.json');
 const oracleMockAbi = OracleMockArtifact.abi;
 
 interface OracleCardProps {

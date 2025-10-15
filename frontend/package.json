@@ -5,13 +5,15 @@
   "scripts": {
     "help": "npm-scripts-help",
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
+    "copy-contracts": "node scripts/copy-contracts-for-vercel.js",
     "start": "next start",
     "lint": "next lint"
   },
   "scriptshelp": {
     "dev": "Starts the development server.",
     "build": "Builds the application for production.",
+    "copy-contracts": "Copies contract artifacts to vercel/ folder (run before deploying).",
     "start": "Starts a production server.",
     "lint": "Runs the linter."
   },

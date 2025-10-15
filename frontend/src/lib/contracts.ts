@@ -60,7 +60,7 @@ let deployVaultArtifact: DeploymentArtifact | null = null;
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployTokensArtifact = require('../../../contracts/broadcast/DeployTokens.s.sol/3735928814/run-latest.json');
+  deployTokensArtifact = require('@contracts/broadcast/DeployTokens.s.sol/3735928814/run-latest.json');
 } catch {
   console.warn('⚠️ DeployTokens artifact not found - tokens will not be available');
 }
@@ -68,7 +68,7 @@ try {
 // Try OracleMock first (Eden approach - default)
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployOracleMockArtifact = require('../../../contracts/broadcast/DeployOracleMock.s.sol/3735928814/run-latest.json');
+  deployOracleMockArtifact = require('@contracts/broadcast/DeployOracleMock.s.sol/3735928814/run-latest.json');
 } catch {
   console.warn('ℹ️ DeployOracleMock artifact not found - trying alternative oracle approach');
 }
@@ -76,28 +76,28 @@ try {
 // Optional: Try aggregator + oracle (alternative approach - fallback)
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployAggregatorArtifact = require('../../../contracts/broadcast/DeployAggregator.s.sol/3735928814/run-latest.json');
+  deployAggregatorArtifact = require('@contracts/broadcast/DeployAggregator.s.sol/3735928814/run-latest.json');
 } catch {
   // Silently fail - aggregator is optional
 }
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployOracleArtifact = require('../../../contracts/broadcast/DeployOracle.s.sol/3735928814/run-latest.json');
+  deployOracleArtifact = require('@contracts/broadcast/DeployOracle.s.sol/3735928814/run-latest.json');
 } catch {
   // Silently fail - oracle is optional
 }
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  createMarketArtifact = require('../../../contracts/broadcast/CreateMarket.s.sol/3735928814/run-latest.json');
+  createMarketArtifact = require('@contracts/broadcast/CreateMarket.s.sol/3735928814/run-latest.json');
 } catch {
   console.warn('⚠️ CreateMarket artifact not found - market will not be available');
 }
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  deployVaultArtifact = require('../../../contracts/broadcast/DeployVault.s.sol/3735928814/run-latest.json');
+  deployVaultArtifact = require('@contracts/broadcast/DeployVault.s.sol/3735928814/run-latest.json');
 } catch {
   console.warn('⚠️ DeployVault artifact not found - vault will not be available');
 }

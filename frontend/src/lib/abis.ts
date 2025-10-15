@@ -8,9 +8,13 @@ import {
 } from '@morpho-org/blue-sdk-viem';
 
 // Import compiled ABIs from Forge artifacts
-import IIrmArtifact from '../../../contracts/out/IIrm.sol/IIrm.json';
-import IOracleArtifact from '../../../contracts/out/IOracle.sol/IOracle.json';
-import FaucetERC20Artifact from '../../../contracts/out/FaucetERC20.sol/FaucetERC20.json';
+// Using require() to avoid TypeScript compile-time checks (webpack resolves at runtime)
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const IIrmArtifact = require('@contracts/out/IIrm.sol/IIrm.json');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const IOracleArtifact = require('@contracts/out/IOracle.sol/IOracle.json');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const FaucetERC20Artifact = require('@contracts/out/FaucetERC20.sol/FaucetERC20.json');
 
 /**
  * Morpho Blue Core ABI from official SDK
