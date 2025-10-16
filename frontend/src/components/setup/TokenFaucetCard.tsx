@@ -5,92 +5,15 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
 import { contracts } from '../../lib/contracts';
+import { faucetERC20Abi } from '../../lib/abis';
+import { formatTokenString } from '../../lib/formatNumber';
 
-// Minimal ERC20 + Faucet ABI
-const faucetTokenAbi = [
-  {
-    type: 'function',
-    name: 'name',
-    inputs: [],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'symbol',
-    inputs: [],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'decimals',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'totalSupply',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'mint',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'canMint',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'remainingCooldown',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'maxMintPerCall',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-] as const;
+// Use FaucetERC20 ABI from compiled Forge artifacts
+const faucetTokenAbi = faucetERC20Abi;
 
 interface TokenFaucetCardProps {
   onRefresh: () => void;
 }
-
-// Interface for token data (currently unused but may be needed for future features)
-// interface TokenData {
-//   address: string;
-//   name: string;
-//   symbol: string;
-//   balance: bigint;
-//   totalSupply: bigint;
-//   canMint: boolean;
-//   remainingCooldown: number;
-//   maxMintPerCall: bigint;
-// }
 
 export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
   const { address: userAddress, isConnected } = useAccount();
@@ -225,6 +148,14 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
 
   const isTokenDeployed = Boolean(tokens[selectedToken]);
   const isMinting = isPending || isMintConfirming;
+  
+  // Type assertions for contract read data (useReadContract returns unknown)
+  const userBalanceTyped = userBalance as bigint | undefined;
+  const totalSupplyTyped = totalSupply as bigint | undefined;
+  const tokenSymbolTyped = tokenSymbol as string | undefined;
+  const maxMintPerCallTyped = maxMintPerCall as bigint | undefined;
+  const remainingCooldownTyped = remainingCooldown as bigint | undefined;
+  const canMintTyped = canMint as boolean | undefined;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -278,9 +209,9 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               </label>
               <div className="bg-gray-50 rounded-md p-3">
                 <span className="text-lg font-semibold">
-                  {userBalance ? formatEther(userBalance) : '0.0000'}
+                  {userBalanceTyped ? formatTokenString(formatEther(userBalanceTyped)) : '0'}
                 </span>
-                <span className="text-sm text-gray-600 ml-1">{tokenSymbol}</span>
+                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbolTyped || '')}</span>
               </div>
             </div>
             <div>
@@ -289,9 +220,9 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               </label>
               <div className="bg-gray-50 rounded-md p-3">
                 <span className="text-lg font-semibold">
-                  {totalSupply ? formatEther(totalSupply) : '0.0000'}
+                  {totalSupplyTyped ? formatTokenString(formatEther(totalSupplyTyped)) : '0'}
                 </span>
-                <span className="text-sm text-gray-600 ml-1">{tokenSymbol}</span>
+                <span className="text-sm text-gray-600 ml-1">{String(tokenSymbolTyped || '')}</span>
               </div>
             </div>
           </div>
@@ -312,23 +243,16 @@ export default function TokenFaucetCard({ onRefresh }: TokenFaucetCardProps) {
               />
               <button
                 onClick={handleMint}
-                disabled={!canMint || isMinting || !mintAmount}
+                disabled={!canMintTyped || isMinting || !mintAmount}
                 className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {isMinting ? 'Minting...' : 'Mint'}
               </button>
             </div>
             
-            {/* Cooldown Info */}
-            {remainingCooldown && remainingCooldown > 0 && (
-              <p className="text-sm text-yellow-600 mt-1">
-                ⏱️ Cooldown: {remainingCooldown}s remaining
-              </p>
-            )}
-            
-            {maxMintPerCall && (
+            {maxMintPerCallTyped && (
               <p className="text-sm text-gray-500 mt-1">
-                Max per call: {formatEther(maxMintPerCall)} {tokenSymbol}
+                Max per call: {formatTokenString(formatEther(maxMintPerCallTyped))} {String(tokenSymbolTyped || '')}
               </p>
             )}
           </div>

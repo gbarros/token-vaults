@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title SettableAggregator
- * @dev Chainlink AggregatorV3Interface implementation for testing
+ * @dev AggregatorV3Interface implementation for testing
  * Allows owner to set price data for oracle testing
  */
 contract SettableAggregator is Ownable {

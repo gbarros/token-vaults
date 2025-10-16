@@ -120,8 +120,8 @@ export function useVaultData() {
       };
     },
     enabled: !!publicClient && !!vaults.metaMorphoDemo.address,
-    refetchInterval: 20000, // Refetch every 20 seconds (less aggressive)
+    refetchInterval: 30000, // 30s - derived data refresh rate
     placeholderData: (previousData) => previousData, // Keep showing old data while fetching new data
-    staleTime: 8000, // Consider data fresh for 8 seconds
+    staleTime: 15000, // 15s - consider data fresh
   });
 }

@@ -1,11 +1,20 @@
 // Centralized ABI definitions for Morpho Blue contracts
-// Now using official ABIs from @morpho-org/blue-sdk-viem
+// Now using official ABIs from @morpho-org/blue-sdk-viem and compiled Forge artifacts
 
 import { 
   blueAbi as sdkBlueAbi, 
   adaptiveCurveIrmAbi as sdkAdaptiveCurveIrmAbi,
   metaMorphoAbi as sdkMetaMorphoAbi
 } from '@morpho-org/blue-sdk-viem';
+
+// Import compiled ABIs from Forge artifacts
+// Using require() to avoid TypeScript compile-time checks (webpack resolves at runtime)
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const IIrmArtifact = require('@contracts/out/IIrm.sol/IIrm.json');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const IOracleArtifact = require('@contracts/out/IOracle.sol/IOracle.json');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const FaucetERC20Artifact = require('@contracts/out/FaucetERC20.sol/FaucetERC20.json');
 
 /**
  * Morpho Blue Core ABI from official SDK
@@ -230,6 +239,12 @@ export const metaMorphoAbi = sdkMetaMorphoAbi;
 export const adaptiveCurveIrmAbi = sdkAdaptiveCurveIrmAbi;
 
 /**
+ * IRM Interface ABI from compiled Forge artifacts
+ * Works with any IRM implementation (including IrmMock)
+ */
+export const irmAbi = IIrmArtifact.abi;
+
+/**
  * Legacy adaptiveCurveIrmAbi for reference (now replaced by SDK)
  * @deprecated Use adaptiveCurveIrmAbi from SDK instead
  */
@@ -270,18 +285,16 @@ export const legacyAdaptiveCurveIrmAbi = [
 ] as const;
 
 /**
- * Oracle ABI for price reading
- * Compatible with Chainlink-style price feeds and Morpho oracles
+ * Oracle ABI from compiled Forge artifacts
+ * Used for Morpho Blue price oracle integration
  */
-export const oracleAbi = [
-  {
-    type: 'function',
-    name: 'price',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
-] as const;
+export const oracleAbi = IOracleArtifact.abi;
+
+/**
+ * FaucetERC20 ABI from compiled Forge artifacts
+ * Includes all ERC20 functions plus drip() for faucet functionality
+ */
+export const faucetERC20Abi = FaucetERC20Artifact.abi;
 
 /**
  * ERC20 ABI (minimal)

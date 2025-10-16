@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
-import { usePublicClient } from 'wagmi';
-import { markets, morpho } from '@/lib/contracts';
-import { morphoBlueAbi, adaptiveCurveIrmAbi } from '@/lib/abis';
+import { formatEther } from 'viem';
 import { getMarketParams } from '@/lib/contracts';
+import { parseMarketData } from '@/lib/sdkUtils';
+import { useMarketDataRaw } from './useMarketDataRaw';
+import { useOraclePrice } from './useOraclePrice';
+import { useIRMRate } from './useIRMRate';
 
+// Raw market data interface (for VaultAllocation and other components)
 export interface MarketData {
   totalSupplyAssets: bigint;
   totalSupplyShares: bigint;
@@ -16,112 +18,151 @@ export interface MarketData {
   borrowAPY: number;
 }
 
+// Formatted market metrics interface (for SandboxMarketCard)
+export interface MarketMetrics {
+  totalSupply: string;
+  totalBorrow: string;
+  utilization: string;
+  supplyAPR: string;
+  borrowAPR: string;
+  isLoading: boolean;
+  error: boolean;
+}
+
+/**
+ * Hook to get market data with APY calculations
+ * Uses shared base hooks (useMarketDataRaw, useOraclePrice, useIRMRate) to avoid duplication
+ * Note: APY is calculated directly from IRM Mock, NOT via Morpho SDK (see comments in implementation)
+ */
 export function useMarketData() {
-  const publicClient = usePublicClient();
+  const marketParams = getMarketParams();
+  const { data: marketDataRaw, isLoading: marketLoading, error: marketError } = useMarketDataRaw();
+  const { data: oraclePrice, isLoading: priceLoading, error: priceError } = useOraclePrice();
+  const { data: irmRate, isLoading: irmLoading } = useIRMRate(marketDataRaw);
 
-  return useQuery({
-    queryKey: ['marketData', markets.sandbox.id],
-    queryFn: async (): Promise<MarketData> => {
-      if (!publicClient || !markets.sandbox.id) {
-        throw new Error('Public client or market ID not available');
-      }
+  const isLoading = marketLoading || priceLoading || irmLoading;
+  const error = marketError || priceError;
 
-      const marketParams = getMarketParams();
-      if (!marketParams) {
-        throw new Error('Market parameters not available');
-      }
+  // Return loading/error state if data not available
+  if (!marketDataRaw || !oraclePrice || !marketParams || error) {
+    return {
+      data: undefined,
+      isLoading,
+      error: !!error,
+      isFetching: isLoading,
+    };
+  }
 
-      // Get market data from Morpho Blue
-      const marketData = await publicClient.readContract({
-        address: morpho.morphoBlueCore,
-        abi: morphoBlueAbi,
-        functionName: 'market',
-        args: [markets.sandbox.id as `0x${string}`],
-      });
+  try {
+    // Parse market data tuple
+    const marketDataStruct = parseMarketData(marketDataRaw as readonly [bigint, bigint, bigint, bigint, bigint, bigint]);
 
-      // marketData is a tuple: [totalSupplyAssets, totalSupplyShares, totalBorrowAssets, totalBorrowShares, lastUpdate, fee]
-      const marketTuple = marketData as readonly [bigint, bigint, bigint, bigint, bigint, bigint];
-      const market = {
-        totalSupplyAssets: marketTuple[0],
-        totalSupplyShares: marketTuple[1],
-        totalBorrowAssets: marketTuple[2],
-        totalBorrowShares: marketTuple[3],
-        lastUpdate: marketTuple[4],
-        fee: marketTuple[5],
-      };
+    // Calculate utilization (simple math, no SDK needed)
+    const utilization = marketDataStruct.totalSupplyAssets > BigInt(0) 
+      ? Number(marketDataStruct.totalBorrowAssets) / Number(marketDataStruct.totalSupplyAssets)
+      : 0;
 
-      // Calculate utilization
-      const utilization = market.totalSupplyAssets > BigInt(0) 
-        ? Number(market.totalBorrowAssets) / Number(market.totalSupplyAssets)
-        : 0;
+    // EDUCATIONAL NOTE: IRM Mock compatibility & SDK limitations
+    // 
+    // The Morpho Blue SDK's Market class requires `rateAtTarget` (specific to AdaptiveCurveIRM).
+    // When `rateAtTarget` is undefined, SDK's getAccrualBorrowRates() returns 0, making supplyApy/borrowApy = 0.
+    // 
+    // IRM Mock doesn't have `rateAtTarget` - it uses simple utilization-based calculations:
+    //   borrowRate = BASE_RATE + (utilization * SLOPE)
+    // 
+    // Solution: Bypass SDK and call IRM's borrowRateView() directly via useIRMRate hook.
+    //           Then calculate APY ourselves using the compound interest formula.
+    
+    let supplyAPY = 0;
+    let borrowAPY = 0;
 
-      console.log('Market data debug:', {
-        totalSupplyAssets: market.totalSupplyAssets.toString(),
-        totalBorrowAssets: market.totalBorrowAssets.toString(),
-        utilization: (utilization * 100).toFixed(2) + '%',
-        marketId: markets.sandbox.id,
-      });
+    if (irmRate) {
+      // Convert borrow rate (per second, WAD) to APY (percentage)
+      // Formula: APY = ((1 + rate/WAD)^SECONDS_PER_YEAR - 1) * 100
+      const SECONDS_PER_YEAR = 365.25 * 24 * 60 * 60;
+      const ratePerSecond = Number(irmRate) / 1e18;
+      borrowAPY = (Math.pow(1 + ratePerSecond, SECONDS_PER_YEAR) - 1) * 100;
+      
+      // Supply APY = Borrow APY * Utilization * (1 - Fee)
+      // Lenders earn the interest paid by borrowers, adjusted for utilization and protocol fee
+      const feeRate = Number(marketDataStruct.fee) / 1e18;
+      supplyAPY = borrowAPY * utilization * (1 - feeRate);
+    }
 
-      // Get borrow rate from IRM
-      let borrowAPY = 0;
-      let supplyAPY = 0;
+    const data: MarketData = {
+      totalSupplyAssets: marketDataStruct.totalSupplyAssets,
+      totalSupplyShares: marketDataStruct.totalSupplyShares,
+      totalBorrowAssets: marketDataStruct.totalBorrowAssets,
+      totalBorrowShares: marketDataStruct.totalBorrowShares,
+      lastUpdate: marketDataStruct.lastUpdate,
+      fee: marketDataStruct.fee,
+      utilization,
+      supplyAPY,
+      borrowAPY,
+    };
 
-      try {
-        const borrowRate = await publicClient.readContract({
-          address: morpho.adaptiveCurveIRM,
-          abi: adaptiveCurveIrmAbi,
-          functionName: 'borrowRateView',
-          args: [
-            {
-              loanToken: marketParams.loanToken,
-              collateralToken: marketParams.collateralToken,
-              oracle: marketParams.oracle,
-              irm: marketParams.irm,
-              lltv: marketParams.lltv,
-            },
-            market,
-          ],
-        });
+    return {
+      data,
+      isLoading: false,
+      error: false,
+      isFetching: false,
+    };
+  } catch (error) {
+    console.error('Error calculating market data:', error);
+    
+    // Fallback: return basic data without APY
+    const marketDataStruct = parseMarketData(marketDataRaw as readonly [bigint, bigint, bigint, bigint, bigint, bigint]);
+    const utilization = marketDataStruct.totalSupplyAssets > BigInt(0) 
+      ? Number(marketDataStruct.totalBorrowAssets) / Number(marketDataStruct.totalSupplyAssets)
+      : 0;
 
-        // Convert from per-second rate to APY
-        // borrowRate is in ray (1e27), per second
-        const borrowRatePerSecond = Number(borrowRate as bigint) / 1e27;
-        const secondsPerYear = 365.25 * 24 * 60 * 60;
-        borrowAPY = (Math.pow(1 + borrowRatePerSecond, secondsPerYear) - 1) * 100;
+    const data: MarketData = {
+      totalSupplyAssets: marketDataStruct.totalSupplyAssets,
+      totalSupplyShares: marketDataStruct.totalSupplyShares,
+      totalBorrowAssets: marketDataStruct.totalBorrowAssets,
+      totalBorrowShares: marketDataStruct.totalBorrowShares,
+      lastUpdate: marketDataStruct.lastUpdate,
+      fee: marketDataStruct.fee,
+      utilization,
+      supplyAPY: 0,
+      borrowAPY: 0,
+    };
 
-        // Supply APY = Borrow APY * Utilization * (1 - Fee)
-        const feeRate = Number(market.fee) / 1e18;
-        supplyAPY = borrowAPY * utilization * (1 - feeRate);
-        
-        console.log('APY calculation debug:', {
-          borrowRateRaw: (borrowRate as bigint).toString(),
-          borrowRatePerSecond: borrowRatePerSecond,
-          borrowAPY: borrowAPY.toFixed(4) + '%',
-          utilization: (utilization * 100).toFixed(2) + '%',
-          feeRate: (feeRate * 100).toFixed(4) + '%',
-          supplyAPY: supplyAPY.toFixed(4) + '%',
-        });
-      } catch (error) {
-        console.error('Could not fetch interest rates:', error);
-        console.error('Market params for IRM call:', marketParams);
-        console.error('Market data for IRM call:', market);
-      }
+    return {
+      data,
+      isLoading: false,
+      error: false,
+      isFetching: false,
+    };
+  }
+}
 
-      return {
-        totalSupplyAssets: market.totalSupplyAssets,
-        totalSupplyShares: market.totalSupplyShares,
-        totalBorrowAssets: market.totalBorrowAssets,
-        totalBorrowShares: market.totalBorrowShares,
-        lastUpdate: market.lastUpdate,
-        fee: market.fee,
-        utilization,
-        supplyAPY,
-        borrowAPY,
-      };
-    },
-    enabled: !!publicClient && !!markets.sandbox.id,
-    refetchInterval: 35000, // Refetch every 35 seconds (less aggressive)
-    placeholderData: (previousData) => previousData, // Keep showing old data while fetching new data
-    staleTime: 15000, // Consider data fresh for 15 seconds
-  });
+/**
+ * Formatted market metrics hook for UI components (like SandboxMarketCard)
+ * Returns formatted strings instead of raw bigints/numbers
+ */
+export function useMarketMetrics(): MarketMetrics {
+  const { data: marketData, isLoading, error } = useMarketData();
+
+  if (!marketData || error) {
+    return {
+      totalSupply: '0.00',
+      totalBorrow: '0.00',
+      utilization: '0.00',
+      supplyAPR: error ? 'Error' : '0.00',
+      borrowAPR: error ? 'Error' : '0.00',
+      isLoading,
+      error: !!error,
+    };
+  }
+
+  return {
+    totalSupply: formatEther(marketData.totalSupplyAssets),
+    totalBorrow: formatEther(marketData.totalBorrowAssets),
+    utilization: (marketData.utilization * 100).toFixed(2),
+    supplyAPR: marketData.supplyAPY.toFixed(2),
+    borrowAPR: marketData.borrowAPY.toFixed(2),
+    isLoading,
+    error: false,
+  };
 }

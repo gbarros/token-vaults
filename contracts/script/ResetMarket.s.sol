@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
-import {IMorphoBase, MarketParams, Market, Position} from "@morpho-blue/interfaces/IMorpho.sol";
+import {IMorpho, MarketParams, Market, Position, Id} from "@morpho-blue/interfaces/IMorpho.sol";
+import {MarketParamsLib} from "@morpho-blue/libraries/MarketParamsLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title ResetMarketScript
@@ -37,8 +38,9 @@ contract ResetMarketScript is Script {
         });
         
         // Check current state
-        Market memory market = IMorphoBase(morphoBlueCore).market(marketParams);
-        Position memory position = IMorphoBase(morphoBlueCore).position(marketParams, deployer);
+        Id marketId = MarketParamsLib.id(marketParams);
+        Market memory market = IMorpho(morphoBlueCore).market(marketId);
+        Position memory position = IMorpho(morphoBlueCore).position(marketId, deployer);
         
         console.log("\nCurrent market state:");
         console.log("- Supply assets:", market.totalSupplyAssets / 1e18);
@@ -52,7 +54,7 @@ contract ResetMarketScript is Script {
         console.log("- Collateral:", position.collateral / 1e18);
         
         if (position.supplyShares == 0 && position.borrowShares == 0 && position.collateral == 0) {
-            console.log("✅ No position to reset");
+            console.log("[OK] No position to reset");
             return;
         }
         
@@ -74,7 +76,7 @@ contract ResetMarketScript is Script {
             require(loanBalance >= borrowAssets, "Insufficient loan tokens to repay");
             
             IERC20(loanToken).approve(morphoBlueCore, borrowAssets);
-            IMorphoBase(morphoBlueCore).repay(marketParams, borrowAssets, 0, deployer, "");
+            IMorpho(morphoBlueCore).repay(marketParams, borrowAssets, 0, deployer, "");
         }
         
         // Step 2: Withdraw all collateral if any
@@ -82,7 +84,7 @@ contract ResetMarketScript is Script {
             console.log("\nStep 2: Withdrawing all collateral...");
             console.log("Withdrawing", position.collateral / 1e18, "collateral tokens");
             
-            IMorphoBase(morphoBlueCore).withdrawCollateral(marketParams, position.collateral, deployer, deployer);
+            IMorpho(morphoBlueCore).withdrawCollateral(marketParams, position.collateral, deployer, deployer);
         }
         
         // Step 3: Withdraw all supply if any
@@ -90,15 +92,15 @@ contract ResetMarketScript is Script {
             console.log("\nStep 3: Withdrawing all supply...");
             console.log("Withdrawing", position.supplyShares / 1e18, "supply shares");
             
-            IMorphoBase(morphoBlueCore).withdraw(marketParams, 0, position.supplyShares, deployer, deployer);
+            IMorpho(morphoBlueCore).withdraw(marketParams, 0, position.supplyShares, deployer, deployer);
         }
         
         vm.stopBroadcast();
         
         // Verify reset
         console.log("\nVerifying reset...");
-        Market memory finalMarket = IMorphoBase(morphoBlueCore).market(marketParams);
-        Position memory finalPosition = IMorphoBase(morphoBlueCore).position(marketParams, deployer);
+        Market memory finalMarket = IMorpho(morphoBlueCore).market(marketId);
+        Position memory finalPosition = IMorpho(morphoBlueCore).position(marketId, deployer);
         
         console.log("Final market state:");
         console.log("- Supply assets:", finalMarket.totalSupplyAssets / 1e18);
@@ -112,9 +114,9 @@ contract ResetMarketScript is Script {
         console.log("- Collateral:", finalPosition.collateral / 1e18);
         
         if (finalPosition.supplyShares == 0 && finalPosition.borrowShares == 0 && finalPosition.collateral == 0) {
-            console.log("✅ Market reset successful!");
+            console.log("[OK] Market reset successful!");
         } else {
-            console.log("⚠️  Market reset incomplete - some positions remain");
+            console.log("WARNING:  Market reset incomplete - some positions remain");
         }
         
         console.log("\n=== RESET COMPLETE ===");

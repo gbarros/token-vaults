@@ -19,7 +19,7 @@ echo "🔄 Updating .env from deployment artifacts..."
 extract_address() {
     local script_name=$1
     local contract_name=$2
-    local artifact_file="$BROADCAST_DIR/$script_name/11155111/run-latest.json"
+    local artifact_file="$BROADCAST_DIR/$script_name/3735928814/run-latest.json"
     
     if [ -f "$artifact_file" ]; then
         # Extract address using jq (or grep if jq not available)
@@ -39,7 +39,7 @@ extract_address() {
 # Function to extract vault address from DeployVault.s.sol artifacts
 extract_vault_address() {
     local script_name=$1
-    local artifact_file="$BROADCAST_DIR/$script_name/11155111/run-latest.json"
+    local artifact_file="$BROADCAST_DIR/$script_name/3735928814/run-latest.json"
     
     if [ -f "$artifact_file" ]; then
         # Extract vault address from additionalContracts array (CREATE2 deployment)
@@ -89,11 +89,14 @@ TOKEN_ADDRESSES=$(extract_address "DeployTokens.s.sol" "FaucetERC20")
 FAKE_USD=$(echo "$TOKEN_ADDRESSES" | sed -n '1p')
 FAKE_TIA=$(echo "$TOKEN_ADDRESSES" | sed -n '2p')
 
-# Aggregator from DeployAggregator.s.sol
+# Aggregator from DeployAggregator.s.sol (optional - for Chainlink-compatible approach)
 AGGREGATOR=$(extract_address "DeployAggregator.s.sol" "SettableAggregator" | head -1)
 
-# Oracle from DeployOracle.s.sol
-ORACLE=$(extract_address "DeployOracle.s.sol" "OracleFromAggregator" | head -1)
+# Oracle - try OracleMock first (Eden), fallback to OracleFromAggregator (Chainlink approach)
+ORACLE=$(extract_address "DeployOracleMock.s.sol" "OracleMock" | head -1)
+if [ -z "$ORACLE" ]; then
+    ORACLE=$(extract_address "DeployOracle.s.sol" "OracleFromAggregator" | head -1)
+fi
 
 # Vault from DeployVault.s.sol (extract from createMetaMorpho call result)
 VAULT=$(extract_vault_address "DeployVault.s.sol")

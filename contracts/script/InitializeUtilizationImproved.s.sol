@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
-import {IMorphoBase, MarketParams, Market} from "@morpho-blue/interfaces/IMorpho.sol";
+import {IMorpho, MarketParams, Market, Id} from "@morpho-blue/interfaces/IMorpho.sol";
+import {MarketParamsLib} from "@morpho-blue/libraries/MarketParamsLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title InitializeUtilizationImprovedScript
@@ -87,7 +88,7 @@ contract InitializeUtilizationImprovedScript is Script {
         if (scenario == InitScenario.LOW_UTILIZATION) {
             // Conservative: 1000 supply, 30% utilization
             supply = 1000e18;      // 1000 fakeUSD
-            collateral = 400e18;   // 400 fakeTIA (enough for 300 borrow at 86% LLTV with 5.0 price)
+            collateral = 400e18;   // 400 fakeTIA (enough for 300 borrow at 80% LLTV with 5.0 price)
             borrow = 300e18;       // 300 fakeUSD (30% utilization)
         } else if (scenario == InitScenario.MEDIUM_UTILIZATION) {
             // Balanced: 1000 supply, 60% utilization  
@@ -101,18 +102,32 @@ contract InitializeUtilizationImprovedScript is Script {
             borrow = 800e18;       // 800 fakeUSD (80% utilization)
         } else {
             // Custom amounts from environment variables
-            supply = vm.envOr("CUSTOM_SUPPLY_AMOUNT", 1000e18);
-            collateral = vm.envOr("CUSTOM_COLLATERAL_AMOUNT", 800e18);
-            borrow = vm.envOr("CUSTOM_BORROW_AMOUNT", 600e18);
+            // Use explicit type casting for vm.envOr to avoid ambiguity
+            try vm.envUint("CUSTOM_SUPPLY_AMOUNT") returns (uint256 val) {
+                supply = val;
+            } catch {
+                supply = 1000e18;
+            }
+            try vm.envUint("CUSTOM_COLLATERAL_AMOUNT") returns (uint256 val) {
+                collateral = val;
+            } catch {
+                collateral = 800e18;
+            }
+            try vm.envUint("CUSTOM_BORROW_AMOUNT") returns (uint256 val) {
+                borrow = val;
+            } catch {
+                borrow = 600e18;
+            }
         }
     }
     
     function _checkMarketState(address morphoBlueCore, MarketParams memory marketParams) internal view {
         console.log("\nChecking current market state...");
         
-        try IMorphoBase(morphoBlueCore).market(marketParams) returns (Market memory market) {
+        Id marketId = MarketParamsLib.id(marketParams);
+        try IMorpho(morphoBlueCore).market(marketId) returns (Market memory market) {
             if (market.totalSupplyAssets > 0 || market.totalBorrowAssets > 0) {
-                console.log("⚠️  Market already has activity:");
+                console.log("WARNING:  Market already has activity:");
                 console.log("   Supply assets:", market.totalSupplyAssets / 1e18);
                 console.log("   Borrow assets:", market.totalBorrowAssets / 1e18);
                 console.log("   Supply shares:", market.totalSupplyShares);
@@ -124,15 +139,15 @@ contract InitializeUtilizationImprovedScript is Script {
                     console.log("   Shares/Assets ratio:", ratio);
                     
                     if (ratio > 2e18 || ratio < 5e17) { // Outside 0.5x to 2x range
-                        console.log("   ⚠️  Abnormal shares/assets ratio detected!");
+                        console.log("   WARNING:  Abnormal shares/assets ratio detected!");
                         console.log("   Consider using a fresh market for better results.");
                     }
                 }
             } else {
-                console.log("✅ Market is empty - good for initialization");
+                console.log("[OK] Market is empty - good for initialization");
             }
         } catch {
-            console.log("❌ Could not read market state");
+            console.log("[ERROR] Could not read market state");
         }
     }
     
@@ -155,7 +170,7 @@ contract InitializeUtilizationImprovedScript is Script {
         require(loanBalance >= supplyAmount, "Insufficient loan token balance");
         require(collateralBalance >= collateralAmount, "Insufficient collateral token balance");
         
-        console.log("✅ Sufficient balances available");
+        console.log("[OK] Sufficient balances available");
     }
     
     function _executeInitialization(
@@ -175,17 +190,17 @@ contract InitializeUtilizationImprovedScript is Script {
         
         // Step 2: Supply liquidity (this creates the initial shares 1:1 with assets)
         console.log("Step 2: Supplying", supplyAmount / 1e18, "loan tokens...");
-        IMorphoBase(morphoBlueCore).supply(marketParams, supplyAmount, 0, deployer, "");
+        IMorpho(morphoBlueCore).supply(marketParams, supplyAmount, 0, deployer, "");
         
         // Step 3: Supply collateral
         console.log("Step 3: Supplying", collateralAmount / 1e18, "collateral tokens...");
-        IMorphoBase(morphoBlueCore).supplyCollateral(marketParams, collateralAmount, deployer, "");
+        IMorpho(morphoBlueCore).supplyCollateral(marketParams, collateralAmount, deployer, "");
         
         // Step 4: Borrow to create utilization
         console.log("Step 4: Borrowing", borrowAmount / 1e18, "loan tokens...");
-        IMorphoBase(morphoBlueCore).borrow(marketParams, borrowAmount, 0, deployer, deployer);
+        IMorpho(morphoBlueCore).borrow(marketParams, borrowAmount, 0, deployer, deployer);
         
-        console.log("✅ All transactions executed successfully");
+        console.log("[OK] All transactions executed successfully");
     }
     
     function _verifyFinalState(
@@ -196,7 +211,8 @@ contract InitializeUtilizationImprovedScript is Script {
     ) internal view {
         console.log("\nVerifying final market state...");
         
-        try IMorphoBase(morphoBlueCore).market(marketParams) returns (Market memory market) {
+        Id marketId = MarketParamsLib.id(marketParams);
+        try IMorpho(morphoBlueCore).market(marketId) returns (Market memory market) {
             console.log("Final state:");
             console.log("- Supply assets:", market.totalSupplyAssets / 1e18);
             console.log("- Borrow assets:", market.totalBorrowAssets / 1e18);
@@ -215,9 +231,9 @@ contract InitializeUtilizationImprovedScript is Script {
                 console.log("- Shares/Assets ratio:", sharesAssetsRatio / 1e15, "x (should be ~1000)"); // Display as 1000 = 1.000x
                 
                 if (sharesAssetsRatio >= 9e17 && sharesAssetsRatio <= 11e17) { // 0.9x to 1.1x
-                    console.log("✅ Healthy shares/assets ratio");
+                    console.log("[OK] Healthy shares/assets ratio");
                 } else {
-                    console.log("⚠️  Unusual shares/assets ratio");
+                    console.log("WARNING:  Unusual shares/assets ratio");
                 }
             }
             
@@ -230,13 +246,13 @@ contract InitializeUtilizationImprovedScript is Script {
                 : expectedBorrow - market.totalBorrowAssets;
                 
             if (supplyDiff < expectedSupply / 100 && borrowDiff < expectedBorrow / 100) { // Within 1%
-                console.log("✅ Final amounts match expectations");
+                console.log("[OK] Final amounts match expectations");
             } else {
-                console.log("⚠️  Final amounts differ from expectations");
+                console.log("WARNING:  Final amounts differ from expectations");
             }
             
         } catch {
-            console.log("❌ Could not verify final market state");
+            console.log("[ERROR] Could not verify final market state");
         }
     }
 }

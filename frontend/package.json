@@ -5,13 +5,15 @@
   "scripts": {
     "help": "npm-scripts-help",
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
+    "copy-contracts": "node scripts/copy-contracts-for-vercel.js",
     "start": "next start",
     "lint": "next lint"
   },
   "scriptshelp": {
     "dev": "Starts the development server.",
     "build": "Builds the application for production.",
+    "copy-contracts": "Copies contract artifacts to vercel/ folder (run before deploying).",
     "start": "Starts a production server.",
     "lint": "Runs the linter."
   },
@@ -22,13 +24,15 @@
     "@morpho-org/blue-sdk-viem": "^3.1.2",
     "@morpho-org/morpho-ts": "^2.4.2",
     "@tanstack/react-query": "^5.89.0",
+    "@types/ws": "^8.18.1",
     "@wagmi/core": "^2.21.0",
     "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.6.0",
     "viem": "^2.37.6",
-    "wagmi": "^2.17.0"
+    "wagmi": "^2.17.0",
+    "ws": "^8.18.3"
   },
   "overrides": {
     "use-sync-external-store": "^1.2.2",

@@ -3,13 +3,14 @@
 /**
  * Morpho Blue SDK Validation Script
  * 
- * This script validates that the Morpho Blue SDK works correctly on Sepolia
- * and can replace manual RPC calls in the frontend. It reads addresses from
- * Forge deployment artifacts and tests various SDK functions.
+ * NOTE: This script was developed for Sepolia testing and may need updates for Eden Testnet.
+ * The Morpho SDK may not have built-in support for Eden chain ID (3735928814).
+ * 
+ * This script validates SDK functionality and can replace manual RPC calls in the frontend.
+ * It reads addresses from Forge deployment artifacts and tests various SDK functions.
  */
 
-import { createPublicClient, http, formatEther, formatUnits, parseUnits } from 'viem';
-import { sepolia } from 'viem/chains';
+import { createPublicClient, http, formatEther, formatUnits, parseUnits, type Chain } from 'viem';
 import { 
   ChainId, 
   Market, 

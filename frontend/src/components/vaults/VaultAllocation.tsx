@@ -2,11 +2,14 @@
 
 import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { useMarketData } from '@/hooks/useMarketData';
+import { useSupplyCap } from '@/hooks/useSupplyCap';
 import { formatUnits } from 'viem';
+import { formatTokenString, formatPercentage } from '@/lib/formatNumber';
 
 export function VaultAllocation() {
   const { data: allocation, isLoading: allocationLoading, isFetching: allocationFetching } = useVaultAllocation();
   const { data: marketData, isLoading: marketLoading, isFetching: marketFetching } = useMarketData();
+  const { data: supplyCapData, isLoading: supplyCapLoading } = useSupplyCap();
 
   const isInitialLoading = allocationLoading || marketLoading;
   const isFetching = allocationFetching || marketFetching;
@@ -62,25 +65,46 @@ export function VaultAllocation() {
 
           {/* Market Allocation */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Market Allocation</h3>
+            <div className="flex items-center space-x-2 mb-3">
+              <h3 className="text-sm font-medium text-gray-700">Market Allocation</h3>
+              <div className="group relative">
+                <svg 
+                  className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                  />
+                </svg>
+                <div className="absolute left-6 top-0 invisible group-hover:visible bg-gray-900 text-white text-xs rounded py-2 px-3 whitespace-nowrap z-10">
+                  Demo uses 1 market. Vaults can allocate to multiple markets.
+                  <div className="absolute top-2 -left-1 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                </div>
+              </div>
+            </div>
             <div className="space-y-3">
               {/* Sandbox Market */}
               <div className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">Sandbox Market</h4>
-                    <p className="text-xs text-gray-500">fakeTIA/fakeUSD • 86% LLTV</p>
+                    <p className="text-xs text-gray-500">fakeTIA/fakeUSD • 80% LLTV</p>
                   </div>
                     <div className="text-right">
                       <div className="text-sm font-medium text-gray-900">
                         {allocation?.marketAllocations?.[0]?.assets 
-                          ? `${parseFloat(formatUnits(allocation.marketAllocations[0].assets, 18)).toFixed(2)} fakeUSD`
-                          : '0.00 fakeUSD'
+                          ? `${formatTokenString(formatUnits(allocation.marketAllocations[0].assets, 18))} fakeUSD`
+                          : '0 fakeUSD'
                         }
                       </div>
                       <div className="text-xs text-gray-500">
                         {allocation?.totalAssets && allocation.totalAssets > BigInt(0)
-                          ? `${((Number(allocation.marketAllocations?.[0]?.assets || BigInt(0)) / Number(allocation.totalAssets)) * 100).toFixed(1)}%`
+                          ? formatPercentage(((Number(allocation.marketAllocations?.[0]?.assets || BigInt(0)) / Number(allocation.totalAssets)) * 100), 1)
                           : '0%'
                         }
                       </div>
@@ -91,19 +115,27 @@ export function VaultAllocation() {
                   <div>
                     <span className="text-gray-500">Utilization:</span>
                     <div className="font-medium">
-                      {marketData?.utilization ? `${(marketData.utilization * 100).toFixed(1)}%` : '0%'}
+                      {marketData?.utilization ? formatPercentage(marketData.utilization * 100, 1) : '0%'}
                     </div>
                   </div>
                   <div>
                     <span className="text-gray-500">Supply APY:</span>
                     <div className="font-medium text-green-600">
-                      {marketData?.supplyAPY ? `${marketData.supplyAPY.toFixed(2)}%` : '0%'}
+                      {marketData?.supplyAPY ? formatPercentage(marketData.supplyAPY, 2) : '0%'}
                     </div>
                   </div>
                   <div>
                     <span className="text-gray-500">Supply Cap:</span>
                     <div className="font-medium">
-                      100 fakeUSD
+                      {supplyCapLoading ? (
+                        <span className="text-gray-400">Loading...</span>
+                      ) : supplyCapData?.supplyCap ? (
+                        supplyCapData.supplyCap === BigInt(0) 
+                          ? 'Not Set' 
+                          : `${formatTokenString(formatUnits(supplyCapData.supplyCap, 18))} fakeUSD`
+                      ) : (
+                        'Not Set'
+                      )}
                     </div>
                   </div>
                 </div>
@@ -112,7 +144,7 @@ export function VaultAllocation() {
                 <div className="mt-3">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Market Utilization</span>
-                    <span>{marketData?.utilization ? `${(marketData.utilization * 100).toFixed(1)}%` : '0%'}</span>
+                    <span>{marketData?.utilization ? formatPercentage(marketData.utilization * 100, 1) : '0%'}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
@@ -133,13 +165,13 @@ export function VaultAllocation() {
                   <div className="text-right">
                     <div className="text-sm font-medium text-gray-900">
                       {allocation?.idleAssets 
-                        ? `${parseFloat(formatUnits(allocation.idleAssets, 18)).toFixed(2)} fakeUSD`
-                        : '0.00 fakeUSD'
+                        ? `${formatTokenString(formatUnits(allocation.idleAssets, 18))} fakeUSD`
+                        : '0 fakeUSD'
                       }
                     </div>
                     <div className="text-xs text-gray-500">
                       {allocation?.totalAssets && allocation.totalAssets > BigInt(0)
-                        ? `${((Number(allocation.idleAssets || BigInt(0)) / Number(allocation.totalAssets)) * 100).toFixed(1)}%`
+                        ? formatPercentage(((Number(allocation.idleAssets || BigInt(0)) / Number(allocation.totalAssets)) * 100), 1)
                         : '0%'
                       }
                     </div>

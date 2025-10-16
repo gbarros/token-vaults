@@ -5,7 +5,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
 
 /**
  * @title OracleFromAggregator
- * @notice Simple oracle that reads from a Chainlink-compatible aggregator and exposes the price function expected by Morpho Blue
+ * @notice Simple oracle that reads from an aggregator and exposes the price function expected by Morpho Blue
  * @dev This is a demo implementation - for production use MorphoChainlinkOracleV2
  */
 contract OracleFromAggregator {
@@ -22,7 +22,7 @@ contract OracleFromAggregator {
     error InvalidPriceData();
     
     /**
-     * @param _aggregator The Chainlink-compatible aggregator address
+     * @param _aggregator The aggregator address (AggregatorV3Interface)
      * @param _maxStaleness Maximum age of price data in seconds (e.g., 3600 for 1 hour)
      */
     constructor(address _aggregator, uint256 _maxStaleness) {

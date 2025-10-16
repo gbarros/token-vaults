@@ -11,7 +11,14 @@
     "test:morpho-sdk": "tsx scripts/testMorphoSDK.ts",
     "debug": "tsx scripts/temp/",
     "build": "tsc",
-    "dev": "tsx --watch"
+    "dev": "tsx --watch",
+    "bots:setup": "tsx scripts/bots/setup.ts",
+    "bots:lenders": "tsx scripts/bots/lenders.ts",
+    "bots:borrowers": "tsx scripts/bots/borrowers.ts",
+    "bots:vault:users": "tsx scripts/bots/vaultUsers.ts",
+    "bots:oracle": "tsx scripts/bots/oracleChangers.ts",
+    "bots:liquidators": "tsx scripts/bots/liquidators.ts",
+    "bots:all": "./scripts/bots/run-all.sh"
   },
   "scriptshelp": {
     "ops:build:oracle": "DEPRECATED - Use Forge script: forge script contracts/script/BuildMorphoOracle.s.sol --broadcast",
@@ -24,6 +31,7 @@
   },
   "dependencies": {
     "@morpho-org/blue-sdk": "^4.11.0",
+    "@morpho-org/blue-sdk-viem": "^4.0.0",
     "@morpho-org/morpho-ts": "^2.4.2",
     "dotenv": "^16.4.5",
     "viem": "^2.21.0"

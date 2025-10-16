@@ -2,15 +2,18 @@
 
 import { useVaultData } from '@/hooks/useVaultData';
 import { useSupplyCap } from '@/hooks/useSupplyCap';
+import { useSupplyQueue } from '@/hooks/useSupplyQueue';
 import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { vaults } from '@/lib/contracts';
 import { formatUnits } from 'viem';
 import { AddressLink } from '@/components/ui/AddressLink';
+import { formatTokenString } from '@/lib/formatNumber';
 
 export function VaultOverview() {
   const { data: vaultData, isLoading, error, isFetching } = useVaultData();
   const { data: supplyCapData, isLoading: supplyCapLoading, isFetching: supplyCapFetching } = useSupplyCap();
-  const { data: allocationData, isFetching: allocationFetching } = useVaultAllocation();
+  const { data: supplyQueueLength, isLoading: supplyQueueLoading, isFetching: supplyQueueFetching } = useSupplyQueue();
+  const { isFetching: allocationFetching } = useVaultAllocation();
 
   if (!vaults.metaMorphoDemo.address) {
     return (
@@ -26,7 +29,7 @@ export function VaultOverview() {
   }
 
   const isInitialLoading = isLoading;
-  const isAnyFetching = isFetching || supplyCapFetching || allocationFetching;
+  const isAnyFetching = isFetching || supplyCapFetching || supplyQueueFetching || allocationFetching;
 
   if (isInitialLoading) {
     return (
@@ -96,6 +99,18 @@ export function VaultOverview() {
               }
             </span>
           </div>
+          {/* Supply Queue Status */}
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${
+              supplyQueueLoading ? 'bg-gray-400' :
+              supplyQueueLength === BigInt(0) ? 'bg-red-400' : 'bg-green-400'
+            }`}></div>
+            <span className="text-xs text-gray-600">
+              {supplyQueueLoading ? 'Loading...' :
+               supplyQueueLength === BigInt(0) ? 'Queue Empty' : 'Queue Set'
+              }
+            </span>
+          </div>
           {/* Vault Status */}
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -134,8 +149,8 @@ export function VaultOverview() {
               <span className="text-sm text-gray-600">Total Assets:</span>
               <span className="text-sm font-medium">
                 {vaultData?.totalAssets 
-                  ? `${parseFloat(formatUnits(vaultData.totalAssets, 18)).toFixed(6)} fakeUSD`
-                  : '0.000000 fakeUSD'
+                  ? `${formatTokenString(formatUnits(vaultData.totalAssets, 18))} fakeUSD`
+                  : '0 fakeUSD'
                 }
               </span>
             </div>
@@ -143,8 +158,8 @@ export function VaultOverview() {
               <span className="text-sm text-gray-600">Total Supply:</span>
               <span className="text-sm font-medium">
                 {vaultData?.totalSupply 
-                  ? `${parseFloat(formatUnits(vaultData.totalSupply, 18)).toFixed(6)} ${vaults.metaMorphoDemo.symbol}`
-                  : `0.000000 ${vaults.metaMorphoDemo.symbol}`
+                  ? `${formatTokenString(formatUnits(vaultData.totalSupply, 18))} ${vaults.metaMorphoDemo.symbol}`
+                  : `0 ${vaults.metaMorphoDemo.symbol}`
                 }
               </span>
             </div>
@@ -169,7 +184,7 @@ export function VaultOverview() {
                   <span className={supplyCapData.supplyCap === BigInt(0) ? 'text-red-600' : 'text-green-600'}>
                     {supplyCapData.supplyCap === BigInt(0) 
                       ? 'Not Set' 
-                      : `${parseFloat(formatUnits(supplyCapData.supplyCap, 18)).toLocaleString()} fakeUSD`
+                      : `${formatTokenString(formatUnits(supplyCapData.supplyCap, 18))} fakeUSD`
                     }
                   </span>
                 ) : (
@@ -181,10 +196,27 @@ export function VaultOverview() {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Pending Cap:</span>
                 <span className="text-sm font-medium text-yellow-600">
-                  {parseFloat(formatUnits(supplyCapData.pendingCap.value, 18)).toLocaleString()} fakeUSD
+                  {formatTokenString(formatUnits(supplyCapData.pendingCap.value, 18))} fakeUSD
                 </span>
               </div>
             )}
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Supply Queue:</span>
+              <span className="text-sm font-medium">
+                {supplyQueueLoading ? (
+                  <span className="text-gray-400">Loading...</span>
+                ) : supplyQueueLength !== undefined ? (
+                  <span className={supplyQueueLength === BigInt(0) ? 'text-red-600' : 'text-green-600'}>
+                    {supplyQueueLength === BigInt(0) 
+                      ? '⚠️ Empty (Deposits Disabled)' 
+                      : `${supplyQueueLength.toString()} market${supplyQueueLength > BigInt(1) ? 's' : ''}`
+                    }
+                  </span>
+                ) : (
+                  <span className="text-red-600">⚠️ Not Configured</span>
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>

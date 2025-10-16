@@ -3,6 +3,7 @@
 import { useVaultData } from '@/hooks/useVaultData';
 import { useVaultAPY } from '@/hooks/useVaultAPY';
 import { formatUnits } from 'viem';
+import { formatTokenString, formatCurrency } from '@/lib/formatNumber';
 
 export function VaultPerformance() {
   const { data: vaultData, isLoading } = useVaultData();
@@ -22,20 +23,20 @@ export function VaultPerformance() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-gray-700">Current APY</h3>
-              <div className="mt-1">
-                {apyLoading ? (
-                  <div className="animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded w-20"></div>
+                  <div className="mt-1">
+                    {apyLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-gray-200 rounded w-20"></div>
+                      </div>
+                    ) : (
+                      <span className="text-2xl font-bold text-green-600">
+                        {apy ? `${apy.toFixed(2)}%` : '0.00%'}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <span className="text-2xl font-bold text-blue-600">
-                    {apy ? `${apy.toFixed(2)}%` : '0.00%'}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {apy && apy > 0 ? 'Based on current market utilization' : 'No active yield - market needs utilization'}
-              </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Weighted average across allocations
+                  </p>
             </div>
             <div className="text-right">
               <div className="text-xs text-gray-500">Share Price</div>
@@ -58,8 +59,8 @@ export function VaultPerformance() {
                   <div className="animate-pulse h-4 bg-gray-200 rounded w-20"></div>
                 ) : (
                   vaultData?.totalAssets 
-                    ? `$${parseFloat(formatUnits(vaultData.totalAssets, 18)).toFixed(2)}`
-                    : '$0.00'
+                    ? `$${formatCurrency(formatUnits(vaultData.totalAssets, 18))}`
+                    : '$0'
                 )}
               </span>
             </div>
@@ -71,8 +72,8 @@ export function VaultPerformance() {
                   <div className="animate-pulse h-4 bg-gray-200 rounded w-20"></div>
                 ) : (
                   vaultData?.totalSupply 
-                    ? parseFloat(formatUnits(vaultData.totalSupply, 18)).toFixed(6)
-                    : '0.000000'
+                    ? formatTokenString(formatUnits(vaultData.totalSupply, 18))
+                    : '0'
                 )}
               </span>
             </div>

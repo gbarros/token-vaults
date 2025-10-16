@@ -23,6 +23,7 @@ export function useTokenBalance(tokenAddress: string | null) {
       return balance as bigint;
     },
     enabled: !!publicClient && !!tokenAddress && !!address,
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 10000, // 10s - simple data refresh rate
+    staleTime: 5000, // 5s - consider data fresh
   });
 }

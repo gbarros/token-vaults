@@ -5,49 +5,11 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { formatUnits, parseUnits } from 'viem';
 import toast from 'react-hot-toast';
 import { contracts } from '../../lib/contracts';
-import { useHealthFactor, useHealthFactorSimulation } from '../../lib/useHealthFactor';
 
-// Minimal Aggregator ABI
-const aggregatorAbi = [
-  {
-    type: 'function',
-    name: 'latestRoundData',
-    inputs: [],
-    outputs: [
-      { name: 'roundId', type: 'uint80' },
-      { name: 'answer', type: 'int256' },
-      { name: 'startedAt', type: 'uint256' },
-      { name: 'updatedAt', type: 'uint256' },
-      { name: 'answeredInRound', type: 'uint80' },
-    ],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'decimals',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'description',
-    inputs: [],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'setAnswer',
-    inputs: [
-      { name: 'answer', type: 'int256' },
-      { name: 'roundId', type: 'uint80' },
-      { name: 'updatedAt', type: 'uint256' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const;
+// OracleMock ABI from compiled Forge artifacts
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const OracleMockArtifact = require('@contracts/out/OracleMock.sol/OracleMock.json');
+const oracleMockAbi = OracleMockArtifact.abi;
 
 interface OracleCardProps {
   onRefresh: () => void;
@@ -57,35 +19,18 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
   const { address: userAddress, isConnected } = useAccount();
   const [customPrice, setCustomPrice] = useState('5.00');
 
-  // Get current health factor
-  const currentHealth = useHealthFactor();
+  // OracleMock uses 36 decimals (Morpho standard: 10^36 for price scaling)
+  const ORACLE_DECIMALS = 36;
   
-  // Get simulated health factor for the custom price
-  const simulatedHealth = useHealthFactorSimulation(customPrice);
+  const oracleAddress = contracts.oracles.oracle;
 
-  const aggregatorAddress = contracts.oracles.aggregator.address;
-
-  // Read oracle data
-  const { data: latestRoundData, refetch: refetchPrice } = useReadContract({
-    address: aggregatorAddress as `0x${string}`,
-    abi: aggregatorAbi,
-    functionName: 'latestRoundData',
-    query: { enabled: !!aggregatorAddress && isConnected },
-  });
-
-  const { data: decimals } = useReadContract({
-    address: aggregatorAddress as `0x${string}`,
-    abi: aggregatorAbi,
-    functionName: 'decimals',
-    query: { enabled: !!aggregatorAddress && isConnected },
-  });
-
-  const { data: description } = useReadContract({
-    address: aggregatorAddress as `0x${string}`,
-    abi: aggregatorAbi,
-    functionName: 'description',
-    query: { enabled: !!aggregatorAddress && isConnected },
-  });
+  // Read current price from OracleMock
+  const { data: currentPriceRaw, refetch: refetchPrice } = useReadContract({
+    address: oracleAddress as `0x${string}`,
+    abi: oracleMockAbi,
+    functionName: 'price',
+    query: { enabled: !!oracleAddress && isConnected },
+  }) as { data: bigint | undefined; refetch: () => void };
 
   // Write contract for setting price
   const { writeContract, data: setPriceTxHash, isPending, error: writeError } = useWriteContract();
@@ -105,48 +50,41 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
     }
   }, [writeError]);
 
-  // Handle transaction success/error separately - only depend on core transaction state
+  // Handle transaction success/error
   React.useEffect(() => {
     if (setPriceTxHash && setPriceTxHash !== handledTxRef.current) {
       if (setPriceError) {
-        // Handle transaction error
         handledTxRef.current = setPriceTxHash;
         toast.dismiss('set-price-tx');
         toast.error('Transaction failed. Please try again.');
       } else if (!isSetPriceConfirming) {
-        // Handle transaction success
         handledTxRef.current = setPriceTxHash;
-        
-        // Dismiss the loading toast and show success
         toast.dismiss('set-price-tx');
         toast.success(`Price updated to ${customPrice}!`);
-        
-        // Call functions without including them in dependencies to prevent infinite loops
         refetchPrice();
         onRefresh();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setPriceTxHash, isSetPriceConfirming, setPriceError, customPrice]); // Intentionally excluding refetchPrice and onRefresh
+  }, [setPriceTxHash, isSetPriceConfirming, setPriceError, customPrice]);
 
   const handleSetPrice = async (priceValue: string) => {
-    if (!userAddress || !aggregatorAddress) {
-      toast.error('Please connect your wallet and ensure aggregator is deployed');
+    if (!userAddress || !oracleAddress) {
+      toast.error('Please connect your wallet and ensure oracle is deployed');
       return;
     }
 
     try {
-      const priceDecimals = decimals || 8;
-      const price = parseUnits(priceValue, priceDecimals);
+      // OracleMock uses 36 decimals for Morpho compatibility
+      const price = parseUnits(priceValue, ORACLE_DECIMALS);
       
-      // Show loading toast immediately
       toast.loading(`Setting price to ${priceValue}...`, { id: 'set-price-tx' });
       
       writeContract({
-        address: aggregatorAddress as `0x${string}`,
-        abi: aggregatorAbi,
-        functionName: 'setAnswer',
-        args: [price, BigInt(0), BigInt(0)], // auto-increment roundId, use current timestamp
+        address: oracleAddress as `0x${string}`,
+        abi: oracleMockAbi,
+        functionName: 'setPrice',
+        args: [price],
       });
     } catch (error) {
       console.error('Set price error:', error);
@@ -156,9 +94,9 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
   };
 
   const handlePresetPrice = (preset: string) => {
-    if (!latestRoundData || !decimals) return;
+    if (!currentPriceRaw) return;
     
-    const currentPrice = Number(formatUnits(latestRoundData[1], decimals));
+    const currentPrice = Number(formatUnits(currentPriceRaw, ORACLE_DECIMALS));
     let newPrice: number;
     
     switch (preset) {
@@ -175,31 +113,26 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
         newPrice = currentPrice * 0.80;
         break;
       case 'crash':
-        newPrice = currentPrice * 0.50; // 50% crash
+        newPrice = currentPrice * 0.50;
         break;
       case 'recovery':
-        newPrice = currentPrice * 2.00; // 100% recovery
+        newPrice = currentPrice * 2.00;
         break;
       default:
         return;
     }
     
-    const newPriceStr = newPrice.toFixed(decimals === 8 ? 8 : 18);
+    const newPriceStr = newPrice.toFixed(2);
     handleSetPrice(newPriceStr);
   };
 
-  const isAggregatorDeployed = Boolean(aggregatorAddress);
+  const isOracleDeployed = Boolean(oracleAddress);
   const isUpdating = isPending || isSetPriceConfirming;
 
-  // Format current price
-  const currentPrice = latestRoundData && decimals 
-    ? formatUnits(latestRoundData[1], decimals)
-    : '0.00000000';
-
-  // Format last update time
-  const lastUpdate = latestRoundData 
-    ? new Date(Number(latestRoundData[3]) * 1000).toLocaleString()
-    : 'Never';
+  // Format current price (OracleMock uses 36 decimals)
+  const currentPrice = currentPriceRaw 
+    ? formatUnits(currentPriceRaw, ORACLE_DECIMALS)
+    : '0.00';
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -207,18 +140,18 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
         <svg className="w-5 h-5 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
-        Oracle Controls
+        Oracle Controls (Mock)
       </h2>
 
       {!isConnected ? (
         <div className="text-center py-8">
           <p className="text-gray-600">Please connect your wallet to control the oracle</p>
         </div>
-      ) : !isAggregatorDeployed ? (
+      ) : !isOracleDeployed ? (
         <div className="text-center py-8">
-          <p className="text-gray-600 mb-2">Aggregator not deployed yet</p>
+          <p className="text-gray-600 mb-2">Oracle not deployed yet</p>
           <p className="text-sm text-gray-500">
-            Run the deployment script: <code className="bg-gray-100 px-2 py-1 rounded">npm run ops:deploy:aggregator</code>
+            Run the deployment script: <code className="bg-gray-100 px-2 py-1 rounded">DeployOracleMock.s.sol</code>
           </p>
         </div>
       ) : (
@@ -230,13 +163,13 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
             </label>
             <div className="bg-gray-50 rounded-md p-4">
               <div className="text-2xl font-bold text-gray-900">
-                {currentPrice}
+                {parseFloat(currentPrice).toFixed(2)}
               </div>
               <div className="text-sm text-gray-600">
-                {description || contracts.oracles.aggregator.pair}
+                {contracts.oracles.aggregator.pair}
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                Last updated: {lastUpdate}
+                Using OracleMock (Morpho Blue built-in)
               </div>
             </div>
           </div>
@@ -249,10 +182,10 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
             <div className="flex space-x-2">
               <input
                 type="number"
-                step="0.00000001"
+                step="0.01"
                 value={customPrice}
                 onChange={(e) => setCustomPrice(e.target.value)}
-                placeholder="5.00000000"
+                placeholder="5.00"
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isUpdating}
               />
@@ -276,7 +209,7 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
                 <button
                   key={preset}
                   onClick={() => handlePresetPrice(preset)}
-                  disabled={isUpdating || !latestRoundData}
+                  disabled={isUpdating || !currentPriceRaw}
                   className={`px-3 py-2 text-sm rounded-md font-medium ${
                     preset.includes('crash') || preset.includes('-')
                       ? 'bg-red-100 text-red-700 hover:bg-red-200'
@@ -295,122 +228,38 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
           <div className="pt-2 border-t border-gray-200">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Decimals:</span>
-                <span className="ml-2 font-medium">{decimals || 8}</span>
+                <span className="text-gray-600">Type:</span>
+                <span className="ml-2 font-medium">OracleMock</span>
               </div>
               <div>
-                <span className="text-gray-600">Round ID:</span>
-                <span className="ml-2 font-medium">{latestRoundData ? latestRoundData[0].toString() : '0'}</span>
+                <span className="text-gray-600">Decimals:</span>
+                <span className="ml-2 font-medium">{ORACLE_DECIMALS}</span>
               </div>
             </div>
             <div className="mt-2">
               <span className="text-gray-600 text-sm">Address:</span>
               <div className="bg-gray-50 rounded-md p-2 font-mono text-xs break-all mt-1">
-                {aggregatorAddress}
+                {oracleAddress}
               </div>
             </div>
           </div>
 
-          {/* Health Factor Display */}
-          {isConnected && (
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                Health Factor Monitor
-                {currentHealth.isLoading && (
-                  <svg className="animate-spin ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-              </h4>
-
-              {!currentHealth.hasPosition ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                  <p className="text-sm text-blue-800">
-                    💡 No position found. Supply collateral and borrow to see health factor.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {/* Current Health Status */}
-                  <div className={`rounded-md p-3 ${
-                    currentHealth.error ? 'bg-red-50 border border-red-200' :
-                    currentHealth.isHealthy ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className={`text-sm font-medium ${
-                          currentHealth.error ? 'text-red-800' :
-                          currentHealth.isHealthy ? 'text-green-800' : 'text-red-800'
-                        }`}>
-                          Current Health Factor: {currentHealth.error ? 'Error' : currentHealth.healthFactor}
-                        </p>
-                        <p className={`text-xs ${
-                          currentHealth.error ? 'text-red-600' :
-                          currentHealth.isHealthy ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {currentHealth.error ? 'Failed to load' :
-                           currentHealth.isHealthy ? 'Position is healthy' : '⚠️ Position at risk of liquidation'}
-                        </p>
-                      </div>
-                      <div className={`w-3 h-3 rounded-full ${
-                        currentHealth.error ? 'bg-red-500' :
-                        currentHealth.isHealthy ? 'bg-green-500' : 'bg-red-500'
-                      }`} />
-                    </div>
-                  </div>
-
-                  {/* Position Details */}
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="bg-gray-50 rounded-md p-2">
-                      <span className="text-gray-600">Collateral:</span>
-                      <div className="font-medium">{parseFloat(currentHealth.collateralAmount).toFixed(4)} fakeTIA</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-md p-2">
-                      <span className="text-gray-600">Borrowed:</span>
-                      <div className="font-medium">{parseFloat(currentHealth.borrowedAmount).toFixed(4)} fakeUSD</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-md p-2">
-                      <span className="text-gray-600">Max Borrow:</span>
-                      <div className="font-medium">{parseFloat(currentHealth.maxBorrowCapacity).toFixed(4)} fakeUSD</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-md p-2">
-                      <span className="text-gray-600">Liquidation Price:</span>
-                      <div className="font-medium">
-                        {currentHealth.liquidationPrice === '0.00' 
-                          ? 'N/A' 
-                          : `${parseFloat(currentHealth.liquidationPrice).toFixed(4)} ${contracts.oracles.aggregator.pair.split('/')[1]}`
-                        }
-                      </div>
-                    </div>
-                  </div>
-
-                {/* Price Impact Simulation */}
-                {customPrice && customPrice !== currentPrice && !isNaN(parseFloat(customPrice)) && parseFloat(customPrice) > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                    <p className="text-sm font-medium text-blue-800 mb-2">
-                      💡 Price Impact Simulation (SDK-Powered)
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-blue-700">
-                          Health Factor at {parseFloat(customPrice).toFixed(2)}: {simulatedHealth.healthFactor}
-                        </p>
-                        <p className={`text-xs ${simulatedHealth.isHealthy ? 'text-green-600' : 'text-red-600'}`}>
-                          {simulatedHealth.isHealthy ? '✅ Would remain healthy' : '⚠️ Would be at risk'}
-                        </p>
-                        <p className="text-xs text-blue-500 mt-1">
-                          ✨ Powered by Morpho Blue SDK
-                        </p>
-                      </div>
-                      <div className={`w-3 h-3 rounded-full ${simulatedHealth.isHealthy ? 'bg-green-500' : 'bg-red-500'}`} />
-                    </div>
-                  </div>
-                )}
-                </div>
-              )}
+          {/* Info Banner */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <div className="flex">
+              <svg className="w-5 h-5 text-blue-400 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm text-blue-800 font-medium">
+                  Eden Testnet - Simple Oracle
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Using Morpho Blue&apos;s built-in OracleMock for testnet deployment. Provides simple, controllable price feeds.
+                </p>
+              </div>
             </div>
-          )}
+          </div>
 
           {/* Warning */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
@@ -420,7 +269,7 @@ export default function OracleCard({ onRefresh }: OracleCardProps) {
               </svg>
               <div>
                 <p className="text-sm text-yellow-800">
-                  Monitor your health factor before changing prices. Values below 1.0 indicate liquidation risk.
+                  Changing oracle prices affects all positions using this market. Test with caution!
                 </p>
               </div>
             </div>

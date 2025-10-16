@@ -9,18 +9,44 @@
  * Usage: npx tsx scripts/verifyVaultState.ts
  */
 
-import { createPublicClient, http, formatEther, formatUnits, parseUnits } from 'viem';
-import { sepolia } from 'viem/chains';
+import { createPublicClient, http, formatEther, formatUnits, parseUnits, type Chain } from 'viem';
 import { config } from 'dotenv';
 
 // Load environment variables from contracts/.env
 config({ path: '../../contracts/.env' });
 
+// Define Eden Testnet chain
+const edenTestnet = {
+  id: 3735928814,
+  name: 'Eden Testnet',
+  network: 'eden-testnet',
+  nativeCurrency: {
+    name: 'TIA',
+    symbol: 'TIA',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://ev-reth-eden-testnet.binarybuilders.services:8545'],
+    },
+    public: {
+      http: ['https://ev-reth-eden-testnet.binarybuilders.services:8545'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Blockscout',
+      url: 'https://eden-testnet.blockscout.com',
+    },
+  },
+  testnet: true,
+} as const satisfies Chain;
+
 // Define addresses from deployment artifacts and environment
 const addresses = {
   morpho: {
-    morphoBlueCore: '0xd011EE229E7459ba1ddd22631eF7bF528d424A14' as const,
-    adaptiveCurveIRM: '0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c' as const,
+    morphoBlueCore: '0xe3F8380851ee3A0BBcedDD0bCDe92d423812C1Cd' as const,
+    adaptiveCurveIRM: '0x9F16Bf4ef111fC4cE7A75F9aB3a3e20CD9754c92' as const,
   },
   tokens: {
     fakeUSD: process.env.LOAN_TOKEN as `0x${string}`,
@@ -35,8 +61,8 @@ const addresses = {
 
 // Create viem client
 const client = createPublicClient({
-  chain: sepolia,
-  transport: http(process.env.RPC_URL || 'https://sepolia.infura.io/v3/your-key')
+  chain: edenTestnet,
+  transport: http(process.env.RPC_URL || edenTestnet.rpcUrls.default.http[0])
 });
 
 // ABI definitions (minimal for what we need)

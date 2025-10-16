@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { usePublicClient } from 'wagmi';
-import { useMarketData } from './useMarketData';
-import { useVaultAllocation } from './useVaultAllocation';
+import { useMarketData } from '@/hooks/useMarketData';
+import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 
 export function useVaultAPY() {
   const publicClient = usePublicClient();
@@ -56,8 +56,8 @@ export function useVaultAPY() {
       return weightedAPY;
     },
     enabled: !!publicClient && !!marketData && !!allocation,
-    refetchInterval: 40000, // Refetch every 40 seconds (less aggressive)
+    refetchInterval: 30000, // 30s - derived data refresh rate
     placeholderData: (previousData) => previousData, // Keep showing old data while fetching new data
-    staleTime: 20000, // Consider data fresh for 20 seconds
+    staleTime: 15000, // 15s - consider data fresh
   });
 }

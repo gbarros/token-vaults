@@ -9,6 +9,7 @@ import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { vaults, getMarketParams } from '@/lib/contracts';
 import { metaMorphoAbi } from '@/lib/abis';
 import { AddressLink } from '@/components/ui/AddressLink';
+import { formatTokenString } from '@/lib/formatNumber';
 
 export function VaultAdmin() {
   const { address } = useAccount();
@@ -44,8 +45,10 @@ export function VaultAdmin() {
     address.toLowerCase() === vaultData.curator.toLowerCase();
   
   // For now, assume owner has all roles (which is correct in our setup)
-  const hasOwnerRole = isOwner;
-  const hasCuratorRole = isOwner || isCurator;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _hasOwnerRole = isOwner;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _hasCuratorRole = isOwner || isCurator;
   const hasAllocatorRole = isOwner; // Owner is set as allocator in deployment
 
   const marketParams = getMarketParams();
@@ -356,10 +359,10 @@ export function VaultAdmin() {
                     <span className="text-xs font-medium text-orange-800">Portfolio Rebalancing Needed</span>
                   </div>
                   <p className="text-xs text-orange-700">
-                    ${parseFloat(formatUnits(allocationData.idleAssets, 18)).toFixed(2)} fakeUSD is currently unallocated.
+                    ${formatTokenString(formatUnits(allocationData.idleAssets, 18))} fakeUSD is currently unallocated.
                   </p>
                   <p className="text-xs text-orange-600 mt-1">
-                    Use "Rebalance Portfolio" to optimize fund allocation and maximize yield.
+                    Use &quot;Rebalance Portfolio&quot; to optimize fund allocation and maximize yield.
                   </p>
                 </div>
               )}
@@ -370,7 +373,7 @@ export function VaultAdmin() {
                     <span className="text-xs font-medium text-green-800">Portfolio Auto-Allocated</span>
                   </div>
                   <p className="text-xs text-green-700">
-                    All ${parseFloat(formatUnits(allocationData.totalAssets, 18)).toFixed(2)} fakeUSD is automatically allocated and earning yield.
+                    All ${formatTokenString(formatUnits(allocationData.totalAssets, 18))} fakeUSD is automatically allocated and earning yield.
                   </p>
                   <p className="text-xs text-green-600 mt-1">
                     MetaMorpho automatically allocates deposits to markets in the supply queue. Manual rebalancing is only needed for strategy changes.
@@ -384,7 +387,7 @@ export function VaultAdmin() {
                     <span className="text-xs font-medium text-yellow-800">Current Market</span>
                   </div>
                   <p className="text-xs text-yellow-700">
-                    fakeUSD/fakeTIA (86% LLTV)
+                    fakeUSD/fakeTIA (80% LLTV)
                   </p>
                   <p className="text-xs text-yellow-600 mt-1 font-mono">
                     ID: {marketParams.id.slice(0, 10)}...{marketParams.id.slice(-8)}
@@ -413,7 +416,7 @@ export function VaultAdmin() {
                   <p>• <strong>Strategy changes:</strong> Adjust exposure across different markets</p>
                   <p className="mt-2 text-blue-600">
                     {allocationData?.idleAssets && allocationData.idleAssets > BigInt(0) 
-                      ? `Action available: Deploy $${parseFloat(formatUnits(allocationData.idleAssets, 18)).toFixed(2)} idle funds to market`
+                      ? `Action available: Deploy $${formatTokenString(formatUnits(allocationData.idleAssets, 18))} idle funds to market`
                       : 'All deposits are auto-allocated. Manual rebalancing only needed for strategy changes.'
                     }
                   </p>
