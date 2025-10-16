@@ -72,7 +72,7 @@ contract DeployVault is Script {
         });
         
         // Set unlimited supply cap for the market
-        uint184 supplyCap = type(uint184).max; // Unlimited
+        uint184 supplyCap = 50_000_000e18; // 50 million fakeUSD
         vaultContract.submitCap(marketParams, supplyCap);
         console.log("Supply cap submitted (pending)");
         

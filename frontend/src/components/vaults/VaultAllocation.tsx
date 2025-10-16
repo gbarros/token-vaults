@@ -2,12 +2,14 @@
 
 import { useVaultAllocation } from '@/hooks/useVaultAllocation';
 import { useMarketData } from '@/hooks/useMarketData';
+import { useSupplyCap } from '@/hooks/useSupplyCap';
 import { formatUnits } from 'viem';
 import { formatTokenString, formatPercentage } from '@/lib/formatNumber';
 
 export function VaultAllocation() {
   const { data: allocation, isLoading: allocationLoading, isFetching: allocationFetching } = useVaultAllocation();
   const { data: marketData, isLoading: marketLoading, isFetching: marketFetching } = useMarketData();
+  const { data: supplyCapData, isLoading: supplyCapLoading } = useSupplyCap();
 
   const isInitialLoading = allocationLoading || marketLoading;
   const isFetching = allocationFetching || marketFetching;
@@ -125,7 +127,15 @@ export function VaultAllocation() {
                   <div>
                     <span className="text-gray-500">Supply Cap:</span>
                     <div className="font-medium">
-                      100 fakeUSD
+                      {supplyCapLoading ? (
+                        <span className="text-gray-400">Loading...</span>
+                      ) : supplyCapData?.supplyCap ? (
+                        supplyCapData.supplyCap === BigInt(0) 
+                          ? 'Not Set' 
+                          : `${formatTokenString(formatUnits(supplyCapData.supplyCap, 18))} fakeUSD`
+                      ) : (
+                        'Not Set'
+                      )}
                     </div>
                   </div>
                 </div>
