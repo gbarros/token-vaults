@@ -2,612 +2,464 @@
 
 **Powered by Celestia Eden**
 
-A comprehensive demonstration of building yield-bearing products using **Morpho Vaults v1.1** as the yield engine on **Eden Testnet**. This repository includes both smart contracts and a frontend application to showcase how to integrate with Morpho's infrastructure.
+A comprehensive demonstration of building yield-bearing products using **Morpho Vaults v1.1** as the yield engine on **Eden Testnet**. This repository includes smart contracts, a Next.js frontend, and optional bot simulation for testing vault functionality.
 
-## 🌐 Network Support
+## 🎯 What This Project Demonstrates
 
-This project is configured for **Eden Testnet** (Powered by Celestia). 
+- **MetaMorpho v1.1 Vault** deployment and integration
+- **Morpho Blue** lending market creation
+- **ERC-4626** vault interface with deposit/withdraw flows
+- **Real-time APY** calculation from market allocations
+- **Vault governance** (Owner, Curator, Allocator roles)
+- **Educational sandbox** with token faucets and controllable oracles
 
-**Using Named RPC Endpoints**: We use Foundry's named RPC endpoints defined in `contracts/foundry.toml`:
+## 📚 Documentation
+
+- **[`plan.md`](plan.md)** - Complete implementation guide (how to build this)
+- **[`tutorial.md`](tutorial.md)** - Learning-focused walkthrough (understanding Morpho Vaults)
+- **[`contracts/README.md`](contracts/README.md)** - Contract deployment guide
+- **[`frontend/README.md`](frontend/README.md)** - Frontend architecture and utilities
+- **[`ops/README.md`](ops/README.md)** - Bot simulation system documentation
+
+## 🌐 Network Configuration
+
+### Eden Testnet (Default)
+
+This project is pre-configured for **Eden Testnet** (Powered by Celestia):
+
+- **Chain ID**: 3735928814
+- **RPC**: https://rpc.edentestnet.com
+- **Explorer**: https://eden-testnet.blockscout.com
+- **Faucet**: https://faucet-eden-testnet.binarybuilders.services
+
+**Named RPC Endpoints**: We use Foundry's named endpoints defined in `contracts/foundry.toml`:
 ```bash
-# Instead of: --rpc-url $RPC_URL
-# We use: --rpc-url eden
+# Cleaner than: --rpc-url $RPC_URL
+forge script script/DeployTokens.s.sol --rpc-url eden --broadcast
 ```
-
-This is cleaner and avoids redundancy since the endpoint is already configured in `foundry.toml` and `.env`.
-
-**Redeploying on Sepolia**: Thanks to centralized configuration, switching networks is simple:
-
-1. **Update `contracts/foundry.toml`**:
-   ```toml
-   [rpc_endpoints]
-   sepolia = "https://sepolia.infura.io/v3/your_project_id"
-   ```
-
-2. **Update `contracts/.env`**:
-   ```bash
-   RPC_URL=https://sepolia.infura.io/v3/your_project_id
-   MORPHO_BLUE_CORE=0xd011EE229E7459ba1ddd22631eF7bF528d424A14
-   METAMORPHO_FACTORY=0x98CbFE4053ad6778E0E3435943aC821f565D0b03
-   IRM_ADDRESS=0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c
-   ```
-
-3. **Update `frontend/.env.local`**:
-   ```bash
-   NEXT_PUBLIC_CHAIN_ID=11155111
-   NEXT_PUBLIC_CHAIN_NAME="Sepolia"
-   NEXT_PUBLIC_MORPHO_BLUE_CORE=0xd011EE229E7459ba1ddd22631eF7bF528d424A14
-   NEXT_PUBLIC_METAMORPHO_FACTORY=0x98CbFE4053ad6778E0E3435943aC821f565D0b03
-   NEXT_PUBLIC_IRM_MOCK=0x8C5dDCD3F601c91D1BF51c8ec26066010ACAbA7c
-   NEXT_PUBLIC_BLOCK_EXPLORER_URL=https://sepolia.etherscan.io
-   ```
-
-4. **Update artifact paths in `contracts.ts`**: Change `/3735928814/` to `/11155111/`
-5. **Use named endpoint**: `--rpc-url sepolia` instead of `--rpc-url eden`
-
-That's it! No code changes needed thanks to environment-driven configuration.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 20.x (see `.nvmrc`)
-- npm
-- Foundry (for smart contracts)
-- Eden Testnet TIA ([Get from faucet](https://faucet-eden-testnet.binarybuilders.services))
+- **Node.js 20+** (check: `node --version`)
+- **npm** (comes with Node)
+- **Foundry** (install: `curl -L https://foundry.paradigm.xyz | bash && foundryup`)
+- **Eden Testnet TIA** ([Get from faucet](https://faucet-eden-testnet.binarybuilders.services))
 
-### Environment Setup
+### 1. Environment Setup
 
-#### Configuration Architecture
+**Contracts:**
+```bash
+cd contracts
+cp env.example .env
+# Edit .env with your PRIVATE_KEY and RPC_URL
+forge install
+```
 
-This project uses a **centralized configuration** approach:
+**Frontend:**
+```bash
+cd frontend
+cp env.example .env.local
+# Optional: Edit .env.local (defaults work for Eden)
+npm install
+```
 
-**Contracts** (`contracts/.env`):
-- Deploy-time configuration (RPC, private key, Morpho addresses)
-- Updated by Forge broadcast artifacts automatically
+**Ops (optional, for bots):**
+```bash
+cd ops
+npm install
+# Copy .env from contracts after deployment
+```
 
-**Frontend** (`frontend/.env.local`):
-- **Chain configuration**: Single source in `src/lib/wagmi.ts`
-- **Morpho addresses**: Environment variables in `src/lib/contracts.ts`
-- **Deployed contracts**: Auto-loaded from Forge artifacts
+### 2. Deploy Contracts
 
-This eliminates duplication and makes network switching simple!
+Run deployment sequence on Eden Testnet:
 
-#### Setup Steps
+```bash
+cd contracts
 
-1. **Forge Scripts** (for contract deployment):
-   ```bash
-   cd contracts
-   cp env.example .env
-   # Edit .env with your RPC_URL and PRIVATE_KEY
-   # Note: ETHERSCAN_API_KEY not required for Blockscout verification
-   forge install
-   ```
-   
-   **RPC Configuration**: The default RPC URL is `https://ev-reth-eden-testnet.binarybuilders.services:8545`. You can use this public endpoint or obtain a dedicated RPC from an Eden provider. The `ETHERSCAN_API_KEY` is optional and not required for Blockscout verification on Eden Testnet.
+# 1. Deploy test tokens (fakeUSD, fakeTIA)
+forge script script/DeployTokens.s.sol --rpc-url eden --broadcast
+./update-env-from-artifacts.sh
 
-2. **Frontend** (for the demo UI):
-   ```bash
-   cd frontend
-   cp env.example .env.local
-   # Edit .env.local to customize network settings (optional)
-   # Default values work for Eden Testnet out of the box
-   npm install
-   ```
-   
-   **Note**: Frontend configuration is centralized and flexible:
-   - **Chain config**: `src/lib/wagmi.ts` (single source of truth)
-   - **Morpho addresses**: Environment variables with defaults
-   - **Deployed contracts**: Auto-loaded from Forge artifacts, override with env vars
-   - See `frontend/env.example` for all available configuration options
-   
-   **Default behavior**: Contracts auto-load from `contracts/broadcast/` artifacts
-   
-   **Override deployed contracts** (optional): Set these in `.env.local`:
-   ```bash
-   NEXT_PUBLIC_LOAN_TOKEN=0x...
-   NEXT_PUBLIC_COLLATERAL_TOKEN=0x...
-   NEXT_PUBLIC_ORACLE_ADDRESS=0x...
-   NEXT_PUBLIC_VAULT_ADDRESS=0x...
-   NEXT_PUBLIC_MARKET_ID=0x...
-   ```
+# 2. Deploy oracle
+INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol --rpc-url eden --broadcast
+./update-env-from-artifacts.sh
 
-### Running the Demo
+# 3. Create Morpho Blue market
+forge script script/CreateMarket.s.sol --rpc-url eden --broadcast
+./update-env-from-artifacts.sh
 
-1. **Deploy Contracts** (using Forge scripts):
-   ```bash
-   cd contracts
-   git submodule update --init --recursive
-   source .env
-   
-   # Deploy all contracts in sequence with automatic verification
-   # Note: Using 'eden' RPC endpoint defined in foundry.toml
-   # Eden uses OracleMock for simplicity
-   
-   forge script script/DeployTokens.s.sol \
-     --rpc-url eden \
-     --broadcast \
-     --verify \
-     --verifier blockscout \
-     --verifier-url 'https://eden-testnet.blockscout.com/api/'
-   ./update-env-from-artifacts.sh
+# 4. Deploy MetaMorpho vault
+forge script script/DeployVault.s.sol --rpc-url eden --broadcast
+./update-env-from-artifacts.sh
 
-   INITIAL_ORACLE_PRICE=5000 forge script script/DeployOracleMock.s.sol \
-     --rpc-url eden \
-     --broadcast \
-     --verify \
-     --verifier blockscout \
-     --verifier-url 'https://eden-testnet.blockscout.com/api/'
-   ./update-env-from-artifacts.sh
+# 5. Mint initial tokens
+forge script script/MintTokens.s.sol --rpc-url eden --broadcast
 
-   forge script script/CreateMarket.s.sol \
-     --rpc-url eden \
-     --broadcast
+# 6. Initialize market utilization
+forge script script/InitializeUtilization.s.sol --rpc-url eden --broadcast
+```
 
-       forge script script/DeployVault.s.sol \
-         --rpc-url eden \
-         --broadcast
-       ./update-env-from-artifacts.sh
+**Verification (optional):**
+Add to any script:
+```bash
+--verify --verifier blockscout --verifier-url 'https://eden-testnet.blockscout.com/api/'
+```
 
-       # Mint tokens (fresh deployments have 0 balance)
-       forge script script/MintTokens.s.sol --rpc-url eden --broadcast
-     
-   forge script script/InitializeUtilization.s.sol \
-     --rpc-url eden \
-     --broadcast
-   ```
-   
-   **Note**: Fresh deployments start with 0 token balance. MintTokens gives 2000 fakeUSD + 1500 fakeTIA, covering all initialization scenarios.
-   
-   See `contracts/README-SCRIPTS.md` for detailed explanations and alternative initialization options.
+### 3. Run Frontend
 
-2. **Start Frontend**:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+```bash
+cd frontend
+npm run dev
+```
 
-   The frontend automatically loads contract addresses from Forge deployment artifacts in `contracts/broadcast/`. No manual configuration needed!
+Visit:
+- **Landing**: http://localhost:3000
+- **Setup (Sandbox)**: http://localhost:3000/setup
+- **Vaults**: http://localhost:3000/vaults
 
-3. **Access Demo**:
-   - Open http://localhost:3000
-   - Connect your wallet (Eden Testnet - chain ID 3735928814)
-   - Visit `/setup` to interact with the sandbox. Set a supply cap and "Submit Cap" and "Accept Cap". Then Add Market to Supply Queue, click to enable deposits.
-   - Use same account to set oracle as deploying vaults.
-   - Visit `/vaults` to interact with the MetaMorpho vault
+### 4. Configure Vault (First Time Only)
 
-## 📋 Milestone M0: "Setting the Stage"
+After deployment, configure the vault via the frontend:
 
-**Status: ✅ COMPLETED**
+1. Connect wallet (must be deployer account)
+2. Navigate to `/vaults`
+3. Expand **"Vault Administration"** panel
+4. **Set Supply Cap**: Enter amount (e.g., 1000000) → Submit → Accept
+5. **Add Market to Supply Queue**: Click to enable market
 
-This milestone provides the sandbox infrastructure needed to demo Morpho vault flows without production risk.
+Now the vault is ready for deposits!
 
-### ✅ Deliverables Completed
+### 5. Optional: Run Bot Simulation
 
-#### 1. Smart Contracts (`contracts/`)
-- **FaucetERC20.sol**: ERC20 token with public faucet, cooldown mechanism, and configurable limits
-- **SettableAggregator.sol**: Standard price aggregator for testing oracle functionality
-- **Foundry Setup**: Complete build environment with OpenZeppelin dependencies
+For continuous market activity:
 
-#### 2. Operations Scripts (`ops/`)
-- **TypeScript Environment**: Debugging utilities and on-chain analysis tools
-- **Utility Scripts**:
-  - `buildOracle.ts`: Create Morpho oracle using oracle factory (alternative to Forge)
-  - `extractOracleAddress.ts`: Extract oracle addresses from factory deployments
-  - `extractForgeAddresses.ts`: Extract all contract addresses from Forge deployment artifacts
-  - `testMorphoSDK.ts`: Validate Morpho Blue SDK functionality and compare with manual RPC calls
-- **Debugging Tools** (`temp/`): Collection of scripts for market analysis, balance checking, and troubleshooting
-- **Address Management**: Utilities to sync with `config/addresses.ts`
-- **SDK Integration**: Morpho Blue SDK validation and migration analysis
+```bash
+cd ops
+cp ../contracts/.env .env  # Sync addresses
 
-#### 3. Frontend Setup Page (`frontend/src/app/setup/`)
-- **WalletCard**: Connection status, network validation, ETH balance, quick links
-- **TokenFaucetCard**: Token selection, balance display, minting with cooldown tracking
-- **OracleCard**: Current price display, custom price setting, preset adjustments (+/-5%, +/-20%, crash/recovery)
-- **SandboxMarketCard**: Market configuration display, creation status, utilization initialization
-- **Web3 Integration**: Wagmi + Viem setup with Eden Testnet support
+# One-time: Generate and fund bot wallets
+npm run bots:setup
 
-#### 4. Infrastructure
-- **Address Book**: Typed configuration with Morpho Eden Testnet addresses from official docs
-- **Environment Templates**: `.env.example` files for both ops and frontend
-- **Navigation**: Clean UI with wallet connection and page routing
-- **Error Handling**: Toast notifications and transaction status tracking
+# Run all bots in background
+npm run bots:all
 
-### 🎯 Acceptance Criteria Met
+# Stop bots
+pkill -f 'tsx scripts/bots'
+```
 
-- ✅ Faucet tokens deployable and mintable via UI with balance updates
-- ✅ Settable aggregator deployed with price control via UI presets
-- ✅ Morpho oracle buildable via factory (transaction-based, address extraction needed)
-- ✅ Sandbox market creatable with configurable parameters
-- ✅ Utilization initialization script for immediate APY visibility
-- ✅ `config/addresses.ts` automatically updated by deployment scripts
-- ✅ Complete runbook in README for end-to-end M0 execution
+Bots include: 2 lenders, 5 borrowers, 3 vault users, 1 oracle changer, 2 liquidators.
 
 ## 🏗️ Project Structure
 
 ```
-├── contracts/           # Foundry smart contracts
+├── contracts/              # Foundry smart contracts
 │   ├── src/
-│   │   ├── FaucetERC20.sol
-│   │   └── SettableAggregator.sol
-│   └── foundry.toml
-├── frontend/           # Next.js application
+│   │   ├── FaucetERC20.sol           # ERC20 with public faucet
+│   │   ├── OracleMock.sol            # Mock oracle for testing (deployed)
+│   │   ├── SettableAggregator.sol    # Alternative aggregator pattern
+│   │   └── OracleFromAggregator.sol  # Alternative oracle pattern
+│   ├── script/              # Deployment scripts
+│   │   ├── DeployTokens.s.sol
+│   │   ├── DeployOracleMock.s.sol
+│   │   ├── CreateMarket.s.sol
+│   │   ├── DeployVault.s.sol
+│   │   └── ... (utilities)
+│   └── foundry.toml         # Network configuration
+│
+├── frontend/               # Next.js 15 application
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── setup/   # Setup & mocks page
-│   │   │   └── page.tsx # Home page
-│   │   └── components/
-│   │       ├── setup/   # Setup page components
-│   │       └── providers/
-│   └── package.json
-├── ops/               # TypeScript debugging & utility scripts
-│   ├── scripts/       # Utility and debugging scripts
-│   │   ├── testMorphoSDK.ts      # SDK validation
-│   │   ├── extractForgeAddresses.ts  # Address extraction
-│   │   └── temp/      # Debugging utilities
-│   ├── lib/          # Shared utilities
-│   ├── MORPHO-SDK-ANALYSIS.md    # SDK migration guide
-│   └── package.json
+│   │   │   ├── page.tsx             # Landing page
+│   │   │   ├── setup/page.tsx       # Sandbox environment
+│   │   │   └── vaults/page.tsx      # Vault interface
+│   │   ├── components/
+│   │   │   ├── setup/               # Faucet, oracle, market cards
+│   │   │   └── vaults/              # Vault UI components
+│   │   ├── hooks/                   # Custom React hooks
+│   │   │   ├── useVaultData.ts
+│   │   │   ├── useVaultAPY.ts
+│   │   │   └── ... (7 hooks total)
+│   │   └── lib/                     # Utilities
+│   │       ├── contracts.ts         # Address management
+│   │       ├── abis.ts              # Contract ABIs
+│   │       ├── formatNumber.ts      # Number formatting
+│   │       └── wagmi.ts             # Web3 config
+│   ├── vercel/              # Production artifacts (committed)
+│   │   └── contracts/       # ~10 essential Forge artifacts
+│   └── next.config.ts       # Webpack aliases for contracts
+│
+├── ops/                    # Operations & bot simulation
+│   ├── scripts/
+│   │   └── bots/           # Autonomous agent scripts
+│   │       ├── setup.ts              # Wallet generation
+│   │       ├── lenders.ts            # Supply bots
+│   │       ├── borrowers.ts          # Borrow bots
+│   │       ├── vaultUsers.ts         # Vault deposit bots
+│   │       ├── oracleChangers.ts     # Price adjustment bots
+│   │       └── liquidators.ts        # Liquidation bots
+│   ├── lib/
+│   │   └── botUtils.ts     # Shared utilities
+│   └── bots.config.ts      # Bot behavior configuration
+│
+├── plan.md                 # Complete builder's guide
+└── tutorial.md             # Learning-focused walkthrough
 ```
 
 ## 🔧 Technical Stack
 
 ### Smart Contracts
-- **Foundry**: Solidity development environment
-- **OpenZeppelin**: Battle-tested contract libraries
-- **Morpho Blue v1.1**: Core lending protocol on Eden Testnet
+- **Foundry** - Solidity development environment
+- **OpenZeppelin** - Battle-tested contract libraries
+- **Morpho Blue v1.1** - Core lending protocol (pre-deployed on Eden)
 
 ### Frontend
-- **Next.js 15**: React framework with App Router
-- **Viem + Wagmi**: Ethereum interaction libraries
-- **Morpho Blue SDK**: Official SDK for type-safe Morpho integration (`@morpho-org/blue-sdk@4.11.0`)
-- **TailwindCSS**: Utility-first styling
-- **React Hot Toast**: User notifications
+- **Next.js 15** - React framework with App Router
+- **Wagmi + Viem** - Type-safe Ethereum interactions
+- **Morpho Blue SDK** - Official SDK (`@morpho-org/blue-sdk@4.11.0`)
+- **TailwindCSS** - Utility-first styling
+- **React Hot Toast** - User notifications
 
 ### Operations
-- **TypeScript**: Debugging utilities and on-chain analysis
-- **Viem**: Ethereum client for contract interactions
-- **Morpho Blue SDK**: SDK validation and testing utilities
-- **Bot Simulation System**: Autonomous agents for realistic market activity
-- **Node.js 20**: Runtime environment
-
-## ✨ Key Features
-
-### 🤖 Bot Simulation System
-Autonomous agents that simulate realistic market activity for continuous testing and demonstration. Includes lenders, borrowers, vault users, oracle changers, and liquidators with auto-refill mechanisms and market rebalancing.
-
-📖 See [`ops/README.md`](ops/README.md) for complete bot system documentation.
-
-### 📊 Number Formatting
-Custom utility for displaying large numbers in a human-readable format with:
-- Thousand separators (1,000,000)
-- Smart abbreviations (1.5k, 2.3M, 1.2B)
-- Consistent formatting across all components
-
-📖 See [`frontend/README.md`](frontend/README.md) for frontend architecture and utilities.
-
-### 🚀 Vercel Deployment
-Production-ready deployment strategy using webpack aliases to handle contract artifacts:
-- Copies only essential files (~10) to committed `frontend/vercel/` folder
-- Keeps `contracts/out/` gitignored (1000+ files)
-- Works seamlessly in both development and production environments
-
-📖 See [`frontend/README.md`](frontend/README.md#vercel-deployment) for deployment guide.
+- **TypeScript** - Bot scripts and utilities
+- **Viem** - Ethereum client for contract interactions
+- **Node.js 20** - Runtime environment
 
 ## 📖 Morpho Integration
 
-This demo integrates with Morpho's infrastructure on Eden Testnet:
+This demo integrates with pre-deployed Morpho contracts on Eden Testnet:
 
 - **Morpho Blue Core**: `0xe3F8380851ee3A0BBcedDD0bCDe92d423812C1Cd`
+  - Core lending protocol
+  - Handles supply, borrow, repay, withdraw operations
+  
 - **MetaMorpho Factory v1.1**: `0xb007ca4AD41874640F9458bF3B5e427c31Be7766`
+  - Factory for deploying vaults via CREATE2
+  - Standardized vault implementation
+  
 - **IRM Mock**: `0x9F16Bf4ef111fC4cE7A75F9aB3a3e20CD9754c92`
+  - Mock interest rate model for testing
+  - Simpler than production AdaptiveCurveIRM
 
-*Source: [Eden Testnet Documentation](https://docs.celestia.org/eden/testnet) | [View on Blockscout](https://eden-testnet.blockscout.com)*
+**Source**: [Eden Testnet Documentation](https://docs.celestia.org/eden/testnet)
 
-**Note**: Eden Testnet uses mock contracts for IRM (Interest Rate Model) and oracles for educational purposes. For production deployments, use audited IRM implementations.
+**Note**: Eden uses mock contracts for educational purposes. Production deployments should use audited IRM implementations and Chainlink/Pyth oracles.
 
-## 🔧 SDK Integration
+**Morpho Blue SDK** provides:
+- Type-safe market parameter creation
+- Automatic market ID calculation
+- Official ABIs (`blueAbi`, `metaMorphoAbi`)
+- Reduced boilerplate vs manual RPC calls
 
-This project includes comprehensive **Morpho Blue SDK** integration:
+## ✨ Key Components
 
-### SDK Validation
-```bash
-# Test SDK functionality (Note: SDK testing script references Sepolia for validation)
-cd ops
-npm run test:morpho-sdk
+Learn from these reusable patterns:
+
+### Custom Contracts
+
+**`FaucetERC20.sol`** - ERC20 with public minting:
+- `faucet(address to, uint256 amount)` - Public mint function
+- `canMint(address user)` - Check cooldown status
+- `remainingCooldown(address user)` - Time until next mint
+- 60-second per-address cooldown
+- Max 2000 tokens per call
+
+**`OracleMock.sol`** - Simple price oracle:
+- `price()` - Returns current price (2 decimals)
+- `setPrice(uint256 newPrice)` - Update price
+- Educational pattern for testing scenarios
+- Production: Use Chainlink or Pyth
+
+### Frontend Hooks
+
+**`useVaultData`** - Vault state management:
+- Fetches `totalAssets`, `totalSupply`, supply caps
+- Calculates share price
+- Auto-refresh with configurable intervals
+
+**`useVaultAPY`** - APY calculation:
+- Weighted average across allocated markets
+- Per-market APY breakdown
+- Real-time updates
+
+**`useVaultAllocation`** - Market allocations:
+- Supply queue tracking
+- Idle assets calculation
+- Per-market allocation amounts
+
+**`useMarketData`** - Morpho Blue market metrics:
+- Total supply and borrowed amounts
+- Utilization rate calculation
+- Supply/borrow APY from IRM
+
+See `frontend/README.md` for complete hook documentation.
+
+### Utility Libraries
+
+**`lib/formatNumber.ts`** - Number formatting:
+```typescript
+formatNumber(1234567, { abbreviate: true })  // "1.23M"
+formatTokenString("2224849.62", 2)           // "2.22M"
+formatCurrency(419000)                       // "$419k"
+formatPercentage(0.0867, 2)                  // "8.67%"
 ```
 
-### Key Features
-- **Type-safe market parameter creation** with automatic ID generation
-- **Verified data consistency** between SDK and manual RPC calls
-- **Performance optimization** with no significant overhead
-- **Migration guide** available in `ops/MORPHO-SDK-ANALYSIS.md`
-
-### SDK Packages Used
-- `@morpho-org/blue-sdk@4.11.0` - Core Morpho Blue SDK
-- `@morpho-org/morpho-ts@2.4.2` - Additional Morpho utilities
-
-The SDK provides significant advantages over manual RPC calls including type safety, automatic market ID calculation, and reduced boilerplate code. See the complete analysis in `ops/MORPHO-SDK-ANALYSIS.md`.
-
-## 📋 Milestone M1: "Simple Morpho Integration"
-
-**Status: ✅ COMPLETED**
-
-This milestone implements a complete frontend for interacting with MetaMorpho v1.1 vaults on Eden Testnet.
-
-### ✅ Deliverables Completed
-
-#### 1. Vault Deployment Infrastructure (`contracts/script/`)
-- **DeployVault.s.sol**: Complete Forge script for MetaMorpho vault deployment
-- **Role Management**: Automated setup of Owner, Curator, Allocator roles
-- **Simplified Deployment**: Core vault creation only (configuration via frontend)
-- **Environment Integration**: Uses addresses from `update-env-from-artifacts.sh`
-
-#### 2. Frontend Vault Interface (`frontend/src/app/vaults/`)
-- **Vault Overview**: Real-time vault metrics, governance info, and status
-- **Performance Dashboard**: APY calculation, share price tracking, and performance metrics
-- **Allocation Strategy**: Market allocation breakdown and queue visualization
-- **Transaction Interface**: Deposit/withdraw flows with approval handling
-- **Vault Administration**: Owner-only panel for supply caps, queue management, and reallocation
-- **Educational Content**: Timing expectations, yield mechanics, and MetaMorpho behavior explanation
-
-#### 3. Data Layer (`frontend/src/hooks/`)
-- **useVaultData**: Complete vault state management with real-time updates
-- **useVaultAPY**: Weighted APY calculation based on market allocations
-- **useVaultAllocation**: Market allocation tracking and queue management
-- **useMarketData**: Underlying market metrics and utilization rates
-- **useSupplyCap**: Supply cap monitoring and pending cap tracking
-- **useTokenBalance/useTokenAllowance**: ERC20 token interaction helpers
-
-#### 4. Integration Features
-- **Morpho SDK Integration**: Official ABIs from `@morpho-org/blue-sdk-viem`
-- **Real-time Updates**: Automatic data refresh with configurable intervals
-- **Transaction Handling**: Complete approve/deposit/withdraw flows with status tracking
-- **Error Handling**: Graceful fallbacks and user-friendly error messages
-- **Responsive Design**: Mobile-friendly interface with Tailwind CSS
-
-### 🎯 Key Features Implemented
-
-1. **ERC-4626 Vault Interface**
-   - Deposit fakeUSD tokens to receive vault shares
-   - Withdraw vault shares to receive underlying assets
-   - Real-time share price calculation and display
-   - Preview functionality for deposit/withdraw amounts
-
-2. **Yield Optimization Display**
-   - Weighted APY calculation across allocated markets
-   - Market utilization and supply rate tracking
-   - Allocation strategy visualization
-   - Performance metrics and timing expectations
-
-3. **Risk Management Visualization**
-   - Supply caps and utilization limits
-   - Queue-based withdrawal mechanics
-   - Governance role transparency
-   - Market risk profile display
-
-4. **Developer Experience**
-   - Automatic address loading from Forge deployment artifacts
-   - Type-safe contract interactions with official Morpho ABIs
-   - Comprehensive error handling and loading states
-   - Educational content for hackathon participants
-
-### 🔧 Technical Implementation
-
-- **Smart Contracts**: Foundry-based deployment with MetaMorpho factory integration
-- **Frontend**: Next.js 15 with React Query for state management
-- **Web3 Integration**: Wagmi + Viem for Ethereum interactions
-- **Type Safety**: Full TypeScript implementation with Morpho SDK types
-- **Real-time Data**: Configurable polling intervals for live updates
-
-### 🚀 Usage Instructions
-
-1. **Deploy Vault** (requires valid private key):
-   ```bash
-   cd contracts
-   forge script script/DeployVault.s.sol --rpc-url $RPC_URL --broadcast --verify
-   ./update-env-from-artifacts.sh  # Auto-populate VAULT_ADDRESS
-   ```
-
-2. **Start Frontend**:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-3. **Configure Vault** (owner-only, required for first use):
-   - Connect wallet to Eden Testnet (must be the deployer account)
-   - Navigate to `/vaults` page
-   - **Expand "Vault Administration"** panel (purple header)
-   - **Set Supply Cap**: Enter desired cap (e.g., 1000000) and click "Submit Cap" → "Accept Cap"
-   - **Add Market to Supply Queue**: Click to enable the market for deposits
-   - **Verify Configuration**: Check that supply cap shows in Vault Overview
-
-4. **Use Vault Interface**:
-   - **Get Test Tokens**: Visit `/setup` page to mint fakeUSD if needed
-   - **Deposit**: Use Vault Actions → Deposit tab (auto-allocated to markets)
-   - **Monitor Performance**: Watch real-time APY and allocation
-   - **Withdraw**: Use Vault Actions → Withdraw tab to redeem shares
-
-### 🔄 What's New in M1
-
-The M1 milestone adds complete MetaMorpho vault functionality to the existing M0 sandbox:
-
-#### New Deployment Script
-- **`DeployVault.s.sol`**: Deploys MetaMorpho v1.1 vault using environment variables
-- **Automatic Role Setup**: Owner, Curator, Allocator roles assigned to deployer
-- **No Hardcoded Addresses**: Uses environment variables populated by `update-env-from-artifacts.sh`
-
-#### New Frontend Route
-- **`/vaults` page**: Complete vault interface for deposit/withdraw operations
-- **Real-time APY**: Weighted APY calculation based on market allocations
-- **Share Price Tracking**: Live ERC-4626 share price updates
-- **Transaction Flows**: Approve/deposit/withdraw with status tracking
-
-#### Enhanced Address Management
-- **Automatic Detection**: Frontend loads vault address from Forge deployment artifacts
-- **Artifact-First Approach**: No hardcoded fallbacks - ensures deployment consistency
-- **Factory Contract Support**: Handles CREATE2 deployments from MetaMorpho factory
-- **Type Safety**: Full TypeScript integration with Morpho SDK ABIs
-
-The M0 sandbox (tokens, oracle, market) remains unchanged and is required for M1 vault functionality.
-
-## 🔧 Vault Configuration Guide
-
-### 📋 Post-Deployment Setup (Required)
-
-After deploying the vault, you **must configure it** before users can deposit:
-
-#### **Step 1: Set Supply Cap**
-```
-1. Connect deployer wallet to frontend
-2. Navigate to /vaults page
-3. Expand "Vault Administration" (purple panel)
-4. In "Supply Cap Management":
-   - Enter desired cap (e.g., 1000000 for 1M fakeUSD)
-   - Click "Submit Cap"
-   - Click "Accept Cap" (available immediately since timelock = 0)
+**`lib/contracts.ts`** - Auto-load addresses:
+```typescript
+// Loads from Forge artifacts automatically
+const artifact = require('@contracts/broadcast/DeployVault.s.sol/3735928814/run-latest.json');
+export const VAULT_ADDRESS = artifact.transactions.find(...)?.contractAddress;
 ```
 
-#### **Step 2: Add Market to Supply Queue**
-```
-1. In "Supply Queue Management":
-   - Click "Add Market to Supply Queue"
-   - This enables the market for automatic deposit allocation
-```
-
-#### **Step 3: Verify Configuration**
-```
-1. Check Vault Overview shows "Supply Cap: 1,000,000 fakeUSD" (green)
-2. Admin panel should show "Portfolio Auto-Allocated" status
-3. Allocation Strategy should show the market in Supply Queue
+**`lib/wagmi.ts`** - Network configuration:
+```typescript
+// Define custom chain for Eden Testnet
+export const edenTestnet = defineChain({
+  id: 3735928814,
+  name: 'Eden Testnet',
+  // ... complete config
+});
 ```
 
-### 🎯 Understanding MetaMorpho Auto-Allocation
+### [Bonus] Bot System
 
-**Key Insight**: MetaMorpho vaults **automatically allocate deposits** to markets in the supply queue.
+**2-Phase Funding Strategy**:
+1. Sequential ETH distribution (avoids nonce conflicts)
+2. Parallel token minting (leverages per-address cooldowns)
 
-#### **When Deposits Auto-Allocate:**
-- ✅ Market is in `supplyQueue`
-- ✅ Market has `supplyCap > 0`
-- ✅ Deposit amount ≤ remaining cap space
-- ✅ Market is healthy (no reverts)
+**Auto-Refill Mechanism**:
+- Bots check balance before each action
+- Auto-mint from faucet when low (< 500 tokens)
+- Respects 60-second cooldown per token
+- Independent refill for loan and collateral tokens
 
-#### **When Manual Reallocation is Needed:**
-- 🔄 **Strategy changes**: Moving funds between different markets
-- 🔄 **Preparing for withdrawals**: Moving funds from markets to idle
-- 🔄 **Risk management**: Adjusting exposure across markets
-- 🔄 **Queue is empty**: No markets configured for auto-allocation
+**Market Rebalancing**:
+- Configured to maintain 60-80% utilization
+- 2 lenders (reduced supply), 5 borrowers (increased demand)
+- 3 vault users, 1 oracle changer, 2 liquidators
+- See `ops/README.md` for configuration details
 
-#### **Common Issues:**
-- **"AllCapsReached" error**: Supply cap too low or not set
-- **"0% APY"**: Market has no borrowers (normal in testing)
-- **Funds not allocating**: Market not in supply queue
+### Vercel Deployment
 
-### 🛠️ Troubleshooting
+**Problem**: `contracts/out/` is gitignored (1000+ files)
 
-#### **Issue: Deposits Fail with "AllCapsReached"**
-```bash
-# Check supply cap
-cd contracts && source .env
-cast call 0x0b26B391e53cB5360A29c3c7Cb5904Cf3f3C3705 "config(bytes32)" "0x0761d379cc7d1212f71ad42bba304a80f1250baa0ad7a615a2501ac5f0e6ccb5" --rpc-url $RPC_URL
+**Solution**: Webpack alias with selective copying
+1. `scripts/copy-contracts-for-vercel.js` copies ~10 essential files
+2. `next.config.ts` webpack alias redirects `@contracts` path
+3. `vercel/contracts/` is committed to git
+4. Works seamlessly in dev and production
 
-# Solution: Increase supply cap via frontend admin panel
-```
+See `frontend/README.md#vercel-deployment` for complete guide.
 
-#### **Issue: 0% APY Despite Deposits**
-```bash
-# Check market utilization
-cd contracts && source .env
-cast call $MORPHO_BLUE_CORE "market(bytes32)" "0x0761d379cc7d1212f71ad42bba304a80f1250baa0ad7a615a2501ac5f0e6ccb5" --rpc-url $RPC_URL
+## 🔍 Troubleshooting
 
-# If no borrowers: APY will be 0% (normal in testing)
-# Solution: Create borrow activity or wait for organic usage
-```
+### Contract Deployment
 
-#### **Issue: Frontend Shows Incorrect Data**
-```bash
-# Verify actual vault state
-cd ops
-npx tsx scripts/verifyVaultState.ts
+**"Insufficient funds"**
+- Check deployer has Eden TIA: `cast balance $DEPLOYER_ADDRESS --rpc-url eden`
+- Visit faucet: https://faucet-eden-testnet.binarybuilders.services
 
-# Check browser console for hook debugging logs
-```
+**"Contract verification failed"**
+- Blockscout verification is optional (no API key needed)
+- Remove `--verify` flags if causing issues
+- Contracts work without verification
 
-## 🚧 Next Steps (Future Milestones)
+**"Nonce too low"**
+- Reset wallet nonce in MetaMask: Settings → Advanced → Clear Activity
+- Or use `--broadcast --resume` to retry failed script
 
-### M2: Custom Vault Implementation
-- Deploy custom ERC-4626 vault
-- Direct integration with Morpho Blue markets
-- Advanced allocation strategies
+### Frontend
 
-### M3: Production Readiness
-- Security hardening and timelocks
-- Comprehensive testing suite
-- Mainnet deployment guide
+**"Wrong network"**
+- Switch wallet to Eden Testnet (Chain ID: 3735928814)
+- Add network manually if needed (RPC: https://rpc.edentestnet.com)
+
+**"Module not found: @contracts/..."**
+- Run `npm run copy-contracts` in frontend directory
+- Restart dev server: `npm run dev`
+- Check `vercel/contracts/` exists and has JSON files
+
+**"Insufficient allowance" on deposit**
+- Click "Approve" button before "Deposit"
+- Wait for approval transaction to confirm
+- Check token balance is sufficient
+
+**APY shows 0%**
+- Market has no utilization (no borrowers)
+- Run `InitializeUtilization.s.sol` to create borrow activity
+- Or start borrower bots: `cd ops && npm run bots:borrowers`
+
+**Numbers not formatting**
+- Check `lib/formatNumber.ts` is imported
+- Verify value is passed as string, number, or bigint
+- See `frontend/NUMBER-FORMATTING.md` for usage examples
+
+### Bots
+
+**"Bots running out of tokens"**
+- Check `bots.config.ts` has `autoRefill.enabled: true`
+- Increase `refillAmount` if bots consume tokens faster than faucet allows
+- Monitor logs: `tail -f logs/lenders.log`
+
+**"Cannot mint: cooldown active"**
+- Faucet enforces 60-second per-address cooldown
+- Auto-refill waits automatically
+- Check `remainingCooldown` on token contract
+
+**Market utilization stuck at 0%**
+- Borrowers need collateral and loan tokens
+- Check bot wallets have both fakeUSD and fakeTIA
+- Verify market has liquidity from lenders
+
+### Transaction Failures
+
+**"Out of gas" error**
+- Eden testnet quirk with gas estimation
+- Retry transaction (usually succeeds on second attempt)
+- Or manually increase gas limit in wallet
+
+**"Health factor below 1.0" (borrowers)**
+- Collateral price dropped too much
+- Oracle changer bot may have set extreme price
+- Adjust price back: Visit `/setup` → Oracle Controls → "Recovery"
+
+**"Vault capacity reached"**
+- Supply cap is full
+- Owner must increase cap: `/vaults` → Admin → Set Supply Cap
+- Or withdraw funds to free capacity
 
 ## 📄 License
 
-Apache-2.0
+**This demo project** does not have a specified license. It's provided as an educational demonstration.
 
-## 🍴 Forking This Repository
-
-### 📋 For Hackathon Developers
-
-This repository is designed to be **fork-friendly** for hackathon participants:
-
-#### **Quick Fork Setup:**
-```bash
-# 1. Fork the repository on GitHub
-# 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/vaults-example.git
-cd vaults-example
-
-# 3. Set up environment
-cd contracts
-cp env.example .env
-# Edit .env with your PRIVATE_KEY and RPC_URL
-# Note: ETHERSCAN_API_KEY is optional for Eden Testnet
-
-cd ../frontend
-cp env.example .env.local
-# Edit .env.local if needed (optional - defaults work for Eden)
-
-# 4. Deploy your own contracts
-cd ../contracts
-source .env
-    forge script script/DeployTokens.s.sol \
-      --rpc-url eden \
-      --broadcast \
-      --verify \
-      --verifier blockscout \
-      --verifier-url 'https://eden-testnet.blockscout.com/api/'
-    ./update-env-from-artifacts.sh
-    # ... continue with DeployOracleMock, CreateMarket, DeployVault, MintTokens, and InitializeUtilization
-    # See contracts/README-SCRIPTS.md for full sequence
-
-# 5. Configure your vault via frontend
-cd ../frontend
-npm run dev
-# Follow vault configuration steps above
-```
-
-#### **Customization Options:**
-- **Vault Parameters**: Change name, symbol, timelock in `DeployVault.s.sol`
-- **Supply Caps**: Adjust via frontend admin panel
-- **Market Selection**: Modify `getMarketParams()` in `contracts.ts` to use different markets
-- **Frontend Styling**: Customize Tailwind CSS components
-- **Polling Intervals**: Adjust refresh rates in hook files
-
-### 📚 Key Files to Understand:
-- **`contracts/script/DeployVault.s.sol`**: Vault deployment logic
-- **`frontend/src/lib/contracts.ts`**: Address management and market configuration
-- **`frontend/src/hooks/`**: Data fetching and state management
-- **`frontend/src/components/vaults/`**: UI components for vault interaction
+**Dependencies use the following licenses:**
+- **Morpho Blue**: Business Source License 1.1 (BSL 1.1)
+  - Non-production use allowed (educational demos qualify)
+  - Converts to GPL v2.0+ on 2026-01-01 or earlier
+  - See `morpho-blue/LICENSE` for full terms
+- **OpenZeppelin Contracts**: MIT License
+- **Next.js**: MIT License
+- **Foundry**: MIT/Apache-2.0
 
 ## 🤝 Contributing
 
-This project is built for educational purposes and hackathon use. Feel free to fork, modify, and extend for your own Morpho integrations.
+This is a demo project for educational purposes. Feel free to:
+- Fork and experiment
+- Report issues for learning improvements
+- Submit PRs for bug fixes or documentation
 
-For questions or support, refer to the [Morpho Documentation](https://docs.morpho.org) or join the [Morpho Discord](https://discord.morpho.org/).
+**Not intended for production use without significant security review.**
+
+## 📚 Learn More
+
+- **Morpho Documentation**: https://docs.morpho.org
+- **ERC-4626 Standard**: https://eips.ethereum.org/EIPS/eip-4626
+- **Eden Testnet**: https://eden-docs.celestia.org
+- **Implementation Guide**: [`plan.md`](plan.md) (complete technical details)
+- **Tutorial**: [`tutorial.md`](tutorial.md) (learning-focused walkthrough)
+
+---
+
+**Built with Morpho Blue & MetaMorpho v1.1 on Celestia Eden Testnet**
